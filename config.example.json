@@ -1,0 +1,5 @@
+{
+  "broker_addr": "tcp://192.168.88.209:1883",
+  "mqtt_client_id": "ddmqtt",
+  "hass_discovery_prefix": "homeassistant"
+}
