@@ -4,15 +4,21 @@ import (
 	"ddmqtt/registry"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const ResponseOk = "Ok"
 
+const ReturnTypeInt = "int"
+const ReturnTypeString = "string"
+const ReturnTypeOk = "ok"
+
 func GetAssetAttributes() (AssetAttributes, error) {
 	var asset AssetAttributes
-	res, err := registry.ExecuteCommand("GetAssetAttributes")
+	res, err := executeCommand("GetAssetAttributes", ReturnTypeString)
 	if err != nil {
 
 		return asset, err
@@ -31,7 +37,7 @@ func GetAssetAttributes() (AssetAttributes, error) {
 }
 
 func GetFirmwareVersion() (string, error) {
-	res, err := registry.ExecuteCommand("GetFirmwareVersion")
+	res, err := executeCommand("GetFirmwareVersion", ReturnTypeString)
 	if err != nil {
 
 		return "", err
@@ -41,7 +47,7 @@ func GetFirmwareVersion() (string, error) {
 }
 
 func GetMonitorActiveHours() (int, error) {
-	res, err := registry.ExecuteCommand("GetMonitorActiveHours")
+	res, err := executeCommand("GetMonitorActiveHours", ReturnTypeInt)
 	if err != nil {
 
 		return -1, err
@@ -55,7 +61,7 @@ func GetMonitorActiveHours() (int, error) {
 }
 
 func GetBrightnessLevel() (int, error) {
-	res, err := registry.ExecuteCommand("GetBrightnessLevel")
+	res, err := executeCommand("GetBrightnessLevel", ReturnTypeInt)
 	if err != nil {
 
 		return -1, err
@@ -65,7 +71,7 @@ func GetBrightnessLevel() (int, error) {
 }
 
 func SetBrightnessLevel(brightness int) error {
-	res, err := registry.ExecuteCommand("SetBrightnessLevel", strconv.Itoa(brightness))
+	res, err := executeCommand("SetBrightnessLevel", ReturnTypeOk, strconv.Itoa(brightness))
 	if err != nil {
 
 		return err
@@ -79,7 +85,7 @@ func SetBrightnessLevel(brightness int) error {
 }
 
 func GetContrastLevel() (int, error) {
-	res, err := registry.ExecuteCommand("GetContrastLevel")
+	res, err := executeCommand("GetContrastLevel", ReturnTypeInt)
 	if err != nil {
 
 		return -1, err
@@ -89,7 +95,7 @@ func GetContrastLevel() (int, error) {
 }
 
 func SetContrastLevel(contrast int) error {
-	res, err := registry.ExecuteCommand("SetContrastLevel", strconv.Itoa(contrast))
+	res, err := executeCommand("SetContrastLevel", ReturnTypeOk, strconv.Itoa(contrast))
 	if err != nil {
 
 		return err
@@ -102,7 +108,57 @@ func SetContrastLevel(contrast int) error {
 	return nil
 }
 
-func ExecuteRaw(cmd string) (string, error) {
+func executeCommand(command string, returnType string, params ...string) (string, error) {
+	err := registry.WriteCommand(command, params...)
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("execute error: %s", err.Error()))
+	}
 
-	return registry.ExecuteCommand(cmd)
+	att := 0
+	for {
+	LOOP:
+		att++
+		res, err := registry.ReadKey(registry.DirectionOut)
+		if err != nil {
+
+			return "", errors.New(fmt.Sprintf("execute error: %s", err.Error()))
+		}
+		if res == "" {
+			if att > 3 {
+				log.Printf("empty response, retrying (%d)", att)
+			}
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+		if res == "..." {
+			if att > 3 {
+				log.Printf("empty2 response, retrying (%d)", att)
+			}
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+		switch returnType {
+		case ReturnTypeString:
+		case ReturnTypeInt:
+			_, err = strconv.Atoi(res)
+			if err != nil {
+				if att > 3 {
+					log.Printf("no-int response, retrying (%d): %s", att, res)
+				}
+				time.Sleep(200 * time.Millisecond)
+				goto LOOP
+			}
+		case ReturnTypeOk:
+			{
+				if res != ResponseOk {
+					if att > 3 {
+						log.Printf("no-int response, retrying (%d): %s", att, res)
+					}
+					time.Sleep(200 * time.Millisecond)
+					goto LOOP
+				}
+			}
+		}
+		return res, nil
+	}
 }

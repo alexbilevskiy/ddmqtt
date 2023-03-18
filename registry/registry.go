@@ -4,15 +4,18 @@ import (
 	"errors"
 	"fmt"
 	"golang.org/x/sys/windows/registry"
-	"log"
 	"math/rand"
 	"strconv"
 	"strings"
 	"time"
 )
 
+const BaseKey = `Software\EnTech\RPC\`
+const DirectionIn = `In`
+const DirectionOut = `Out`
+
 func ReadKey(direction string) (string, error) {
-	key := `Software\EnTech\RPC\` + direction
+	key := BaseKey + direction
 	k, err := registry.OpenKey(registry.CURRENT_USER, key, registry.QUERY_VALUE)
 	if err != nil {
 		if errors.Is(err, registry.ErrNotExist) {
@@ -34,7 +37,7 @@ func ReadKey(direction string) (string, error) {
 }
 
 func WriteCommand(command string, params ...string) error {
-	kd, err := registry.OpenKey(registry.CURRENT_USER, `Software\EnTech\RPC\Out`, registry.SET_VALUE)
+	kd, err := registry.OpenKey(registry.CURRENT_USER, BaseKey+DirectionOut, registry.SET_VALUE)
 	if err != nil && !errors.Is(err, registry.ErrNotExist) {
 
 		return errors.New(fmt.Sprintf("open delete key error: %s", err.Error()))
@@ -47,7 +50,7 @@ func WriteCommand(command string, params ...string) error {
 		return errors.New(fmt.Sprintf("delete key error: %s", err.Error()))
 	}
 
-	kw, err := registry.OpenKey(registry.CURRENT_USER, `Software\EnTech\RPC\In`, registry.SET_VALUE)
+	kw, err := registry.OpenKey(registry.CURRENT_USER, BaseKey+DirectionIn, registry.SET_VALUE)
 	if err != nil {
 
 		return errors.New(fmt.Sprintf("open write key error: %s", err.Error()))
@@ -58,7 +61,7 @@ func WriteCommand(command string, params ...string) error {
 		return errors.New(fmt.Sprintf("write command key error: %s", err.Error()))
 	}
 
-	kwi, err := registry.OpenKey(registry.CURRENT_USER, `Software\EnTech\RPC\In`, registry.SET_VALUE)
+	kwi, err := registry.OpenKey(registry.CURRENT_USER, BaseKey+DirectionIn, registry.SET_VALUE)
 	if err != nil {
 
 		return errors.New(fmt.Sprintf("open write i key error: %s", err.Error()))
@@ -72,36 +75,4 @@ func WriteCommand(command string, params ...string) error {
 	}
 
 	return nil
-}
-
-func ExecuteCommand(command string, params ...string) (string, error) {
-	err := WriteCommand(command, params...)
-	if err != nil {
-		return "", errors.New(fmt.Sprintf("execute error: %s", err.Error()))
-	}
-
-	att := 0
-	for {
-		att++
-		res, err := ReadKey("Out")
-		if err != nil {
-
-			return "", errors.New(fmt.Sprintf("execute error: %s", err.Error()))
-		}
-		if res == "" {
-			if att > 3 {
-				log.Printf("empty response, retrying (%d)", att)
-			}
-			time.Sleep(500 * time.Millisecond)
-			continue
-		}
-		if res == "..." {
-			if att > 3 {
-				log.Printf("empty2 response, retrying (%d)", att)
-			}
-			time.Sleep(500 * time.Millisecond)
-			continue
-		}
-		return res, nil
-	}
 }
