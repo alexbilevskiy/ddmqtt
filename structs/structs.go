@@ -16,13 +16,13 @@ type DiscoveryDevice struct {
 type DiscoverySensor struct {
 	Name string `json:"name"`
 	//DeviceClass       string          `json:"device_class"`
-	AvailabilityTopic string          `json:"availability_topic"`
-	StateTopic        string          `json:"state_topic"`
-	UniqueId          string          `json:"unique_id"`
-	Device            DiscoveryDevice `json:"device"`
+	//AvailabilityTopic string          `json:"availability_topic"`
+	Availability SAvailability   `json:"availability"`
+	StateTopic   string          `json:"state_topic"`
+	ObjectId     string          `json:"object_id"`
+	UniqueId     string          `json:"unique_id"`
+	Device       DiscoveryDevice `json:"device"`
 }
-
-//Availability SAvailability `json:"availability"`
 
 type SAvailability struct {
 	Topic string `json:"topic"`

@@ -26,6 +26,20 @@ func GetAssetAttributes() (AssetAttributes, error) {
 	return asset, nil
 }
 
+func GetMonitorActiveHours() (int, error) {
+	res, err := registry.ExecuteCommand("GetMonitorActiveHours")
+	if err != nil {
+
+		return -1, err
+	}
+	hours64, err := strconv.ParseInt(res, 10, 32)
+	if err != nil {
+		return -1, err
+	}
+
+	return int(hours64), nil
+}
+
 func ExecuteRaw(cmd string) (string, error) {
 
 	return registry.ExecuteCommand(cmd)
