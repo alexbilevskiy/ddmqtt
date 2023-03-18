@@ -6,7 +6,6 @@ import (
 	"ddmqtt/config"
 	"ddmqtt/hass"
 	"ddmqtt/mqtt"
-	"time"
 )
 
 func main() {
@@ -17,8 +16,5 @@ func main() {
 	//	log.Fatalf("failed to subscribe: %s", token.Error())
 	//}
 
-	for {
-		hass.ReportState()
-		time.Sleep(60 * time.Second)
-	}
+	hass.StartReporting()
 }

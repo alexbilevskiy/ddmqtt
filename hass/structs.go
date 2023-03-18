@@ -12,14 +12,23 @@ const TypeNumber = "number"
 
 type Entity interface {
 	GetType() string
+	DoDiscovery()
+	DoAvailability(available bool)
+	ReportState(state int)
+	ReportValue() error
+	SetValueReader(func() (int, error))
 }
 
 type NumberEntity interface {
 	GetType() string
-	SetState(int)
+	SetValueSetter(func(value int) error)
+	SetValue(value int) error
 }
 
 type Sensor struct {
+	Discovered   bool
+	BaseTopic    string
+	valueReader  func() (int, error)
 	Name         string        `json:"name"`
 	Availability SAvailability `json:"availability"`
 	StateTopic   string        `json:"state_topic"`
@@ -28,11 +37,11 @@ type Sensor struct {
 	Device       Device        `json:"device"`
 }
 
-func (Sensor) GetType() string {
-	return TypeSensor
-}
-
 type Number struct {
+	Discovered   bool
+	BaseTopic    string
+	valueReader  func() (int, error)
+	valueSetter  func(value int) error
 	Name         string        `json:"name"`
 	Availability SAvailability `json:"availability"`
 	StateTopic   string        `json:"state_topic"`
@@ -46,10 +55,6 @@ type Number struct {
 	Mode         string        `json:"mode"`
 	Step         int           `json:"step"`
 	Unit         string        `json:"unit_of_measurement"`
-}
-
-func (Number) GetType() string {
-	return TypeNumber
 }
 
 type SAvailability struct {
