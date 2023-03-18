@@ -42,6 +42,12 @@ func StartReporting() {
 		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
 	}
 
+	se := CreateSelectPresets(monitor)
+	err = se.Init()
+	if err != nil {
+		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
+	}
+
 	for {
 		var err error
 		err = ah.ReportValue()
@@ -59,7 +65,13 @@ func StartReporting() {
 			log.Printf("[%s] failed to report state", cn.ObjectId)
 		}
 
-		time.Sleep(60 * time.Second)
+		time.Sleep(200 * time.Millisecond)
+		err = se.ReportValue()
+		if err != nil {
+			log.Printf("[%s] failed to report state", cn.ObjectId)
+		}
+
+		time.Sleep(15 * time.Second)
 	}
 }
 
@@ -73,6 +85,7 @@ func CreateSensorActiveHours(monitor Device) Sensor {
 		ObjectId:     objectId,
 		UniqueId:     objectId,
 		Device:       monitor,
+		Icon:         "mdi:clock-outline",
 	}
 
 	hours.SetValueReader(ddmrpc.GetMonitorActiveHours)
@@ -131,4 +144,58 @@ func CreateNumberContrast(monitor Device) Number {
 	contrast.SetValueSetter(ddmrpc.SetContrastLevel)
 
 	return contrast
+}
+
+func CreateSelectPresets(monitor Device) Select {
+	objectId := fmt.Sprintf("%s_presets", monitor.Identifiers)
+	baseTopic := fmt.Sprintf("%s/select/%s", config.CFG.HassDiscoveryPrefix, objectId)
+	selector := Select{
+		Discovered:   false,
+		BaseTopic:    baseTopic,
+		Name:         "Preset",
+		State:        "",
+		Presets:      config.CFG.Presets,
+		StateTopic:   fmt.Sprintf("%s/state", baseTopic),
+		Availability: SAvailability{Topic: fmt.Sprintf("%s/available", baseTopic)},
+		CommandTopic: fmt.Sprintf("%s/set", baseTopic),
+		ObjectId:     objectId,
+		UniqueId:     objectId,
+		Device:       monitor,
+		Icon:         "mdi:format-list-bulleted",
+		Options:      make([]string, 0),
+	}
+	for _, option := range selector.Presets {
+		selector.Options = append(selector.Options, option.Name)
+	}
+
+	selector.SetValueReader(func() (string, error) {
+		return selector.State, nil
+	})
+	selector.SetValueSetter(func(value string) error {
+		found := false
+		for _, option := range selector.Presets {
+			if option.Name != value {
+
+				continue
+			}
+			found = true
+			var err error
+			err = ddmrpc.SetBrightnessLevel(option.Brightness)
+			if err != nil {
+				return err
+			}
+			err = ddmrpc.SetContrastLevel(option.Contrast)
+			if err != nil {
+				return err
+			}
+			selector.State = value
+		}
+		if !found {
+			log.Printf("[%s] not found option `%s`", selector.ObjectId, value)
+		}
+
+		return nil
+	})
+
+	return selector
 }

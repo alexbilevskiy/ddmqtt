@@ -1,5 +1,7 @@
 package hass
 
+import "ddmqtt/config"
+
 type Device struct {
 	Identifiers  string `json:"identifiers"`
 	Manufacturer string `json:"manufacturer"`
@@ -11,7 +13,7 @@ type Device struct {
 const TypeSensor = "sensor"
 const TypeNumber = "number"
 
-type Entity interface {
+type NumberEntity interface {
 	GetType() string
 	Init() error
 	DoDiscovery()
@@ -19,24 +21,9 @@ type Entity interface {
 	ReportState(state int)
 	ReportValue() error
 	SetValueReader(func() (int, error))
-}
-
-type NumberEntity interface {
 	SetValueSetter(func(value int) error)
 	SetValue(value int) error
 	SubscribeMqtt() error
-}
-
-type Sensor struct {
-	Discovered   bool
-	BaseTopic    string
-	valueReader  func() (int, error)
-	Name         string        `json:"name"`
-	Availability SAvailability `json:"availability"`
-	StateTopic   string        `json:"state_topic"`
-	ObjectId     string        `json:"object_id"`
-	UniqueId     string        `json:"unique_id"`
-	Device       Device        `json:"device"`
 }
 
 type Number struct {
@@ -61,4 +48,57 @@ type Number struct {
 
 type SAvailability struct {
 	Topic string `json:"topic"`
+}
+
+type SensorEntity interface {
+	GetType() string
+	Init() error
+	DoDiscovery()
+	DoAvailability(available bool)
+	ReportState(state int)
+	ReportValue() error
+	SetValueReader(func() (int, error))
+}
+
+type Sensor struct {
+	Discovered   bool
+	BaseTopic    string
+	valueReader  func() (int, error)
+	Name         string        `json:"name"`
+	Availability SAvailability `json:"availability"`
+	StateTopic   string        `json:"state_topic"`
+	ObjectId     string        `json:"object_id"`
+	UniqueId     string        `json:"unique_id"`
+	Device       Device        `json:"device"`
+	Icon         string        `json:"icon"`
+}
+
+type SelectEntity interface {
+	GetType() string
+	Init() error
+	DoDiscovery()
+	DoAvailability(available bool)
+	ReportState(state string)
+	ReportValue() error
+	SetValueSetter(func(value string) error)
+	SetValue(value string) error
+	SubscribeMqtt() error
+}
+
+type Select struct {
+	Discovered   bool
+	BaseTopic    string
+	valueReader  func() (string, error)
+	valueSetter  func(value string) error
+	State        string
+	Presets      []config.Preset
+	Name         string        `json:"name"`
+	Availability SAvailability `json:"availability"`
+	StateTopic   string        `json:"state_topic"`
+	CommandTopic string        `json:"command_topic"`
+	ObjectId     string        `json:"object_id"`
+	UniqueId     string        `json:"unique_id"`
+	Device       Device        `json:"device"`
+	Options      []string      `json:"options"`
+	Icon         string        `json:"icon"`
 }

@@ -1,5 +1,57 @@
 {
   "broker_addr": "tcp://192.168.88.209:1883",
   "mqtt_client_id": "ddmqtt",
-  "hass_discovery_prefix": "homeassistant"
+  "hass_discovery_prefix": "homeassistant",
+  "presets": [
+    {
+      "name": "MIN",
+      "brightness": 0,
+      "contrast": 25
+    },
+    {
+      "name": "0%",
+      "brightness": 0,
+      "contrast": 65
+    },
+    {
+      "name": "10%",
+      "brightness": 10,
+      "contrast": 65
+    },
+    {
+      "name": "20%",
+      "brightness": 20,
+      "contrast": 65
+    },
+    {
+      "name": "30%",
+      "brightness": 30,
+      "contrast": 65
+    },
+    {
+      "name": "40%",
+      "brightness": 40,
+      "contrast": 65
+    },
+    {
+      "name": "50%",
+      "brightness": 50,
+      "contrast": 65
+    },
+    {
+      "name": "80%",
+      "brightness": 80,
+      "contrast": 65
+    },
+    {
+      "name": "100%",
+      "brightness": 100,
+      "contrast": 65
+    },
+    {
+      "name": "MAX",
+      "brightness": 100,
+      "contrast": 85
+    }
+  ]
 }
