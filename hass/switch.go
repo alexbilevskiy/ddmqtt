@@ -8,19 +8,19 @@ import (
 	"log"
 )
 
-func (entity *Select) GetType() string {
-	return TypeSelect
+func (entity *Switch) GetType() string {
+	return TypeSwitch
 }
 
-func (entity *Select) SetValueReader(reader func() (string, error)) {
+func (entity *Switch) SetValueReader(reader func() (string, error)) {
 	entity.valueReader = reader
 }
 
-func (entity *Select) SetValueSetter(setter func(value string) error) {
+func (entity *Switch) SetValueSetter(setter func(value string) error) {
 	entity.valueSetter = setter
 }
 
-func (entity *Select) Init() error {
+func (entity *Switch) Init() error {
 	entity.DoDiscovery()
 	err := entity.subscribeMqtt()
 	if err != nil {
@@ -30,7 +30,7 @@ func (entity *Select) Init() error {
 	return nil
 }
 
-func (entity *Select) DoDiscovery() {
+func (entity *Switch) DoDiscovery() {
 	if entity.Discovered {
 		return
 	}
@@ -46,7 +46,7 @@ func (entity *Select) DoDiscovery() {
 	}
 }
 
-func (entity *Select) ReportValue() error {
+func (entity *Switch) ReportValue() error {
 	value, err := entity.valueReader()
 	if err != nil {
 		log.Printf("[%s] cannot read value: %s", entity.ObjectId, err.Error())
@@ -60,7 +60,7 @@ func (entity *Select) ReportValue() error {
 	return nil
 }
 
-func (entity *Select) reportAvailability(available bool) {
+func (entity *Switch) reportAvailability(available bool) {
 	availabilityStatus := "offline"
 	if available {
 		availabilityStatus = "online"
@@ -73,7 +73,7 @@ func (entity *Select) reportAvailability(available bool) {
 	}
 }
 
-func (entity *Select) publishState(state string) {
+func (entity *Switch) publishState(state string) {
 	log.Printf("[%s] publishing state: %s", entity.ObjectId, state)
 
 	pubState := mqtt.C.Publish(entity.StateTopic, 0, false, state)
@@ -82,23 +82,12 @@ func (entity *Select) publishState(state string) {
 	}
 }
 
-func (entity *Select) SetValue(value string) error {
-	err := entity.valueSetter(value)
-	if err != nil {
+func (entity *Switch) SetValue(value string) error {
 
-		return err
-	}
-	for _, number := range entity.Affected {
-		err = number.ReportValue()
-		if err != nil {
-			log.Printf("[%s] failed to update affected entity: %s", entity.ObjectId, number.ObjectId)
-		}
-	}
-
-	return nil
+	return entity.valueSetter(value)
 }
 
-func (entity *Select) subscribeMqtt() error {
+func (entity *Switch) subscribeMqtt() error {
 	listener := func(client mqttLib.Client, msg mqttLib.Message) {
 		if msg.Topic() != entity.CommandTopic {
 			return

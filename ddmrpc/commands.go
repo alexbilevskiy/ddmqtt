@@ -114,6 +114,46 @@ func SetContrastLevel(contrast int) error {
 	return nil
 }
 
+func GetPower() (string, error) {
+	res, err := executeCommand("GetControl", ReturnTypeString, "D6")
+	if err != nil {
+
+		return "", err
+	}
+	if res == "0001" {
+
+		return "ON", nil
+	}
+	if res == "0004" {
+
+		return "OFF", nil
+	}
+
+	return "", errors.New(fmt.Sprintf("invalid GetPower response: %s", res))
+}
+
+func SetPower(value string) error {
+	var arg string
+	if value == "ON" {
+		arg = "01"
+	} else if value == "OFF" {
+		arg = "04"
+	} else {
+		return errors.New("invalid power value to set")
+	}
+	res, err := executeCommand("SetControl", ReturnTypeString, "D6", arg)
+	if err != nil {
+
+		return err
+	}
+	if res != ResponseOk {
+
+		return errors.New(fmt.Sprintf("invalid SetPower response: %s", res))
+	}
+
+	return nil
+}
+
 func executeCommand(command string, returnType string, params ...string) (string, error) {
 	wg.Wait()
 	wg.Add(1)

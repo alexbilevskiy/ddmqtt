@@ -49,25 +49,37 @@ func StartReporting() {
 	}
 	se.Affected = append(se.Affected, br, cn)
 
+	pw := CreateSwitchPower(monitor)
+	err = pw.Init()
+	if err != nil {
+		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
+	}
+
 	for {
 		var err error
 		err = ah.ReportValue()
 		if err != nil {
 			log.Printf("[%s] failed to report state", ah.ObjectId)
 		}
-		time.Sleep(200 * time.Millisecond)
+		//time.Sleep(200 * time.Millisecond)
 		err = br.ReportValue()
 		if err != nil {
 			log.Printf("[%s] failed to report state", br.ObjectId)
 		}
-		time.Sleep(200 * time.Millisecond)
+		//time.Sleep(200 * time.Millisecond)
 		err = cn.ReportValue()
 		if err != nil {
 			log.Printf("[%s] failed to report state", cn.ObjectId)
 		}
 
-		time.Sleep(200 * time.Millisecond)
+		//time.Sleep(200 * time.Millisecond)
 		err = se.ReportValue()
+		if err != nil {
+			log.Printf("[%s] failed to report state", cn.ObjectId)
+		}
+
+		//time.Sleep(200 * time.Millisecond)
+		err = pw.ReportValue()
 		if err != nil {
 			log.Printf("[%s] failed to report state", cn.ObjectId)
 		}
@@ -108,7 +120,7 @@ func CreateNumberBrightness(monitor Device) Number {
 		UniqueId:     objectId,
 		Device:       monitor,
 		Icon:         "mdi:brightness-percent",
-		Min:          1,
+		Min:          0,
 		Max:          100,
 		Mode:         "slider",
 		Step:         1,
@@ -134,7 +146,7 @@ func CreateNumberContrast(monitor Device) Number {
 		UniqueId:     objectId,
 		Device:       monitor,
 		Icon:         "mdi:contrast-box",
-		Min:          1,
+		Min:          0,
 		Max:          100,
 		Mode:         "slider",
 		Step:         1,
@@ -163,7 +175,7 @@ func CreateSelectPresets(monitor Device) Select {
 		UniqueId:     objectId,
 		Device:       monitor,
 		Icon:         "mdi:format-list-bulleted",
-		Options:      make([]string, 0),
+		Options:      append(make([]string, 0), ""),
 		Affected:     make([]Number, 0),
 	}
 	for _, option := range selector.Presets {
@@ -200,4 +212,26 @@ func CreateSelectPresets(monitor Device) Select {
 	})
 
 	return selector
+}
+
+func CreateSwitchPower(monitor Device) Switch {
+	objectId := fmt.Sprintf("%s_power", monitor.Identifiers)
+	baseTopic := fmt.Sprintf("%s/switch/%s", config.CFG.HassDiscoveryPrefix, objectId)
+	power := Switch{
+		Discovered:   false,
+		BaseTopic:    baseTopic,
+		Name:         "Power",
+		StateTopic:   fmt.Sprintf("%s/state", baseTopic),
+		Availability: SAvailability{Topic: fmt.Sprintf("%s/available", baseTopic)},
+		CommandTopic: fmt.Sprintf("%s/set", baseTopic),
+		ObjectId:     objectId,
+		UniqueId:     objectId,
+		Device:       monitor,
+		Icon:         "mdi:power",
+	}
+
+	power.SetValueReader(ddmrpc.GetPower)
+	power.SetValueSetter(ddmrpc.SetPower)
+
+	return power
 }
