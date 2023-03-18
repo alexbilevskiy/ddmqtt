@@ -2,10 +2,10 @@
 
 #### Features
 - brightness/contrast
+- presets (like 20%, 40%, 50%, 100%)
 - active hours sensor (just for fun)
 
 #### TODO
-- presets (like 20%, 40%, 50%, 100%)
 - presets (as in DDM ui)
 - power on/off
 - input selection
