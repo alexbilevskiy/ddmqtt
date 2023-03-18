@@ -7,11 +7,16 @@ type Device struct {
 	Name         string `json:"name"`
 }
 
-const TYPE_SENSOR = "sensor"
-const TYPE_NUMBER = "number"
+const TypeSensor = "sensor"
+const TypeNumber = "number"
 
 type Entity interface {
 	GetType() string
+}
+
+type NumberEntity interface {
+	GetType() string
+	SetState(int)
 }
 
 type Sensor struct {
@@ -24,7 +29,7 @@ type Sensor struct {
 }
 
 func (Sensor) GetType() string {
-	return TYPE_SENSOR
+	return TypeSensor
 }
 
 type Number struct {
@@ -44,7 +49,7 @@ type Number struct {
 }
 
 func (Number) GetType() string {
-	return TYPE_NUMBER
+	return TypeNumber
 }
 
 type SAvailability struct {

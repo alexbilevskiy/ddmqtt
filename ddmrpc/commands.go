@@ -2,9 +2,13 @@ package ddmrpc
 
 import (
 	"ddmqtt/registry"
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
+
+const ResponseOk = "Ok"
 
 func GetAssetAttributes() (AssetAttributes, error) {
 	var asset AssetAttributes
@@ -46,12 +50,46 @@ func GetBrightnessLevel() (int, error) {
 
 		return -1, err
 	}
-	bri64, err := strconv.ParseInt(res, 10, 32)
+
+	return strconv.Atoi(res)
+}
+
+func SetBrightnessLevel(brightness int) error {
+	res, err := registry.ExecuteCommand("SetBrightnessLevel", strconv.Itoa(brightness))
 	if err != nil {
+
+		return err
+	}
+	if res != ResponseOk {
+
+		return errors.New(fmt.Sprintf("invalid SetBrightnessLevel response: %s", res))
+	}
+
+	return nil
+}
+
+func GetContrastLevel() (int, error) {
+	res, err := registry.ExecuteCommand("GetContrastLevel")
+	if err != nil {
+
 		return -1, err
 	}
 
-	return int(bri64), nil
+	return strconv.Atoi(res)
+}
+
+func SetContrastLevel(contrast int) error {
+	res, err := registry.ExecuteCommand("SetContrastLevel", strconv.Itoa(contrast))
+	if err != nil {
+
+		return err
+	}
+	if res != ResponseOk {
+
+		return errors.New(fmt.Sprintf("invalid SetContrastLevel response: %s", res))
+	}
+
+	return nil
 }
 
 func ExecuteRaw(cmd string) (string, error) {
