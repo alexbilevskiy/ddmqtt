@@ -30,6 +30,16 @@ func GetAssetAttributes() (AssetAttributes, error) {
 	return asset, nil
 }
 
+func GetFirmwareVersion() (string, error) {
+	res, err := registry.ExecuteCommand("GetFirmwareVersion")
+	if err != nil {
+
+		return "", err
+	}
+
+	return res, nil
+}
+
 func GetMonitorActiveHours() (int, error) {
 	res, err := registry.ExecuteCommand("GetMonitorActiveHours")
 	if err != nil {

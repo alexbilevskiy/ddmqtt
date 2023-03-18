@@ -1,10 +1,13 @@
 package hass
 
 import (
+	"ddmqtt/config"
 	"ddmqtt/mqtt"
 	"encoding/json"
 	"fmt"
+	mqttLib "github.com/eclipse/paho.mqtt.golang"
 	"log"
+	"regexp"
 	"strconv"
 )
 
@@ -18,6 +21,16 @@ func (entity *Number) SetValueReader(reader func() (int, error)) {
 
 func (entity *Number) SetValueSetter(setter func(value int) error) {
 	entity.valueSetter = setter
+}
+
+func (entity *Number) Init() error {
+	entity.DoDiscovery()
+	err := entity.SubscribeMqtt()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (entity *Number) DoDiscovery() {
@@ -75,4 +88,31 @@ func (entity *Number) ReportState(state int) {
 func (entity *Number) SetValue(value int) error {
 
 	return entity.valueSetter(value)
+}
+
+func (entity *Number) SubscribeMqtt() error {
+	listener := func(client mqttLib.Client, msg mqttLib.Message) {
+		r, _ := regexp.Compile(fmt.Sprintf("%s/(%s)/([a-zA-Z0-9_-]+)/set", config.CFG.HassDiscoveryPrefix, TypeNumber))
+		matches := r.FindStringSubmatch(msg.Topic())
+		if matches == nil {
+			//log.Printf("skipping mqtt topic: %s with payload `%s`", msg.Topic(), msg.Payload())
+			return
+		}
+		set := string(msg.Payload())
+		value, err := strconv.Atoi(set)
+		if err != nil {
+			log.Printf("[%s] invalid set value: %s", entity.ObjectId, msg.Payload())
+			return
+		}
+		err = entity.SetValue(value)
+		if err != nil {
+			log.Printf("[%s] failed to set value: %s", entity.ObjectId, err.Error())
+		}
+	}
+	if token := mqtt.C.Subscribe(entity.CommandTopic, 0, listener); token.Wait() && token.Error() != nil {
+
+		return token.Error()
+	}
+
+	return nil
 }

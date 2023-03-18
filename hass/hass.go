@@ -2,40 +2,45 @@ package hass
 
 import (
 	"ddmqtt/config"
-	"ddmqtt/device"
-	"ddmqtt/mqtt"
+	"ddmqtt/ddmrpc"
 	"fmt"
-	mqttLib "github.com/eclipse/paho.mqtt.golang"
 	"log"
-	"regexp"
-	"strconv"
 	"time"
 )
 
 func StartReporting() {
 	var monitor Device
 
-	attrs, err := device.GetAssetAttributes()
+	attrs, err := ddmrpc.GetAssetAttributes()
 	if err != nil {
 		log.Fatalf("failed to read monitor: %s", err.Error())
+	}
+	fw, err := ddmrpc.GetFirmwareVersion()
+	if err != nil {
+		log.Fatalf("failed to read monitor fw: %s", err.Error())
 	}
 	monitor = Device{
 		Identifiers:  attrs.ServiceTag,
 		Manufacturer: "Dell",
 		Model:        attrs.ModelCode,
 		Name:         attrs.Model,
+		SwVersion:    fw,
 	}
 
 	ah := CreateSensorActiveHours(monitor)
-	ah.DoDiscovery()
+	ah.Init()
 
 	br := CreateNumberBrightness(monitor)
-	br.DoDiscovery()
-	subscribeChanges(br)
+	err = br.Init()
+	if err != nil {
+		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
+	}
 
 	cn := CreateNumberContrast(monitor)
-	cn.DoDiscovery()
-	subscribeChanges(cn)
+	err = cn.Init()
+	if err != nil {
+		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
+	}
 
 	for {
 		var err error
@@ -70,7 +75,7 @@ func CreateSensorActiveHours(monitor Device) Sensor {
 		Device:       monitor,
 	}
 
-	hours.SetValueReader(device.GetMonitorActiveHours)
+	hours.SetValueReader(ddmrpc.GetMonitorActiveHours)
 
 	return hours
 }
@@ -95,8 +100,8 @@ func CreateNumberBrightness(monitor Device) Number {
 		Step:         1,
 		Unit:         "%",
 	}
-	brightness.SetValueReader(device.GetBrightnessLevel)
-	brightness.SetValueSetter(device.SetBrightnessLevel)
+	brightness.SetValueReader(ddmrpc.GetBrightnessLevel)
+	brightness.SetValueSetter(ddmrpc.SetBrightnessLevel)
 
 	return brightness
 }
@@ -122,33 +127,8 @@ func CreateNumberContrast(monitor Device) Number {
 		Unit:         "%",
 	}
 
-	contrast.SetValueReader(device.GetContrastLevel)
-	contrast.SetValueSetter(device.SetContrastLevel)
+	contrast.SetValueReader(ddmrpc.GetContrastLevel)
+	contrast.SetValueSetter(ddmrpc.SetContrastLevel)
 
 	return contrast
-}
-
-func subscribeChanges(entity Number) {
-	listener := func(client mqttLib.Client, msg mqttLib.Message) {
-		r, _ := regexp.Compile(fmt.Sprintf("%s/(%s)/([a-zA-Z0-9_-]+)/set", config.CFG.HassDiscoveryPrefix, TypeNumber))
-		matches := r.FindStringSubmatch(msg.Topic())
-		if matches == nil {
-			//log.Printf("skipping mqtt topic: %s with payload `%s`", msg.Topic(), msg.Payload())
-			return
-		}
-		set := string(msg.Payload())
-		value, err := strconv.Atoi(set)
-		if err != nil {
-			log.Printf("[%s] invalid set value: %s", entity.ObjectId, msg.Payload())
-			return
-		}
-		err = entity.SetValue(value)
-		if err != nil {
-			log.Printf("[%s] failed to set value: %s", entity.ObjectId, err.Error())
-		}
-
-	}
-	if token := mqtt.C.Subscribe(fmt.Sprintf("%s/#", entity.BaseTopic), 0, listener); token.Wait() && token.Error() != nil {
-		log.Fatalf("[%s] failed to subscribe: %s", entity.ObjectId, token.Error())
-	}
 }

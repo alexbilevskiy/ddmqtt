@@ -16,6 +16,12 @@ func (entity *Sensor) SetValueReader(reader func() (int, error)) {
 	entity.valueReader = reader
 }
 
+func (entity *Sensor) Init() error {
+	entity.DoDiscovery()
+
+	return nil
+}
+
 func (entity *Sensor) DoDiscovery() {
 	if entity.Discovered {
 		return

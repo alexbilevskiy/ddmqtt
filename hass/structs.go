@@ -5,6 +5,7 @@ type Device struct {
 	Manufacturer string `json:"manufacturer"`
 	Model        string `json:"model"`
 	Name         string `json:"name"`
+	SwVersion    string `json:"sw_version"`
 }
 
 const TypeSensor = "sensor"
@@ -12,6 +13,7 @@ const TypeNumber = "number"
 
 type Entity interface {
 	GetType() string
+	Init() error
 	DoDiscovery()
 	DoAvailability(available bool)
 	ReportState(state int)
@@ -20,9 +22,9 @@ type Entity interface {
 }
 
 type NumberEntity interface {
-	GetType() string
 	SetValueSetter(func(value int) error)
 	SetValue(value int) error
+	SubscribeMqtt() error
 }
 
 type Sensor struct {
