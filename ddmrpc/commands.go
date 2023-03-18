@@ -7,14 +7,20 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 const ResponseOk = "Ok"
+const ResponseInvalidCommand = "Invalid command"
+const ResponseEmpty = ""
+const ResponseWait = "..."
 
 const ReturnTypeInt = "int"
 const ReturnTypeString = "string"
 const ReturnTypeOk = "ok"
+
+var wg sync.WaitGroup
 
 func GetAssetAttributes() (AssetAttributes, error) {
 	var asset AssetAttributes
@@ -109,6 +115,10 @@ func SetContrastLevel(contrast int) error {
 }
 
 func executeCommand(command string, returnType string, params ...string) (string, error) {
+	wg.Wait()
+	wg.Add(1)
+	defer wg.Done()
+
 	err := registry.WriteCommand(command, params...)
 	if err != nil {
 		return "", errors.New(fmt.Sprintf("execute error: %s", err.Error()))
@@ -118,24 +128,32 @@ func executeCommand(command string, returnType string, params ...string) (string
 	for {
 	LOOP:
 		att++
+		if att > 10 {
+
+			return "", errors.New(fmt.Sprintf("attempt limit reached for %s", command))
+		}
 		res, err := registry.ReadKey(registry.DirectionOut)
 		if err != nil {
 
 			return "", errors.New(fmt.Sprintf("execute error: %s", err.Error()))
 		}
-		if res == "" {
+		if res == ResponseEmpty {
 			if att > 3 {
 				log.Printf("empty response, retrying (%d)", att)
 			}
 			time.Sleep(200 * time.Millisecond)
 			continue
 		}
-		if res == "..." {
+		if res == ResponseWait {
 			if att > 3 {
-				log.Printf("empty2 response, retrying (%d)", att)
+				log.Printf("waiting for response, retrying (%d)", att)
 			}
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 			continue
+		}
+		if res == ResponseInvalidCommand {
+
+			return "", errors.New(fmt.Sprintf("execute error: %s", res))
 		}
 		switch returnType {
 		case ReturnTypeString:
@@ -143,7 +161,7 @@ func executeCommand(command string, returnType string, params ...string) (string
 			_, err = strconv.Atoi(res)
 			if err != nil {
 				if att > 3 {
-					log.Printf("no-int response, retrying (%d): %s", att, res)
+					log.Printf("[%s] not int response, retrying (%d) `%s`: %s", command, att, res, err.Error())
 				}
 				time.Sleep(200 * time.Millisecond)
 				goto LOOP
@@ -152,7 +170,7 @@ func executeCommand(command string, returnType string, params ...string) (string
 			{
 				if res != ResponseOk {
 					if att > 3 {
-						log.Printf("no-int response, retrying (%d): %s", att, res)
+						log.Printf("[%s] not ok response, retrying (%d): %s", command, att, res)
 					}
 					time.Sleep(200 * time.Millisecond)
 					goto LOOP
@@ -161,4 +179,9 @@ func executeCommand(command string, returnType string, params ...string) (string
 		}
 		return res, nil
 	}
+}
+
+func ExecuteRaw(cmd string) (string, error) {
+
+	return executeCommand(cmd, ReturnTypeString)
 }

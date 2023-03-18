@@ -1,13 +1,11 @@
 package hass
 
 import (
-	"ddmqtt/config"
 	"ddmqtt/mqtt"
 	"encoding/json"
 	"fmt"
 	mqttLib "github.com/eclipse/paho.mqtt.golang"
 	"log"
-	"regexp"
 	"strconv"
 )
 
@@ -92,10 +90,7 @@ func (entity *Number) SetValue(value int) error {
 
 func (entity *Number) subscribeMqtt() error {
 	listener := func(client mqttLib.Client, msg mqttLib.Message) {
-		r, _ := regexp.Compile(fmt.Sprintf("%s/(%s)/([a-zA-Z0-9_-]+)/set", config.CFG.HassDiscoveryPrefix, TypeNumber))
-		matches := r.FindStringSubmatch(msg.Topic())
-		if matches == nil {
-			//log.Printf("skipping mqtt topic: %s with payload `%s`", msg.Topic(), msg.Payload())
+		if msg.Topic() != entity.CommandTopic {
 			return
 		}
 		set := string(msg.Payload())
@@ -108,6 +103,8 @@ func (entity *Number) subscribeMqtt() error {
 		if err != nil {
 			log.Printf("[%s] failed to set value: %s", entity.ObjectId, err.Error())
 		}
+
+		entity.publishState(value)
 	}
 	if token := mqtt.C.Subscribe(entity.CommandTopic, 0, listener); token.Wait() && token.Error() != nil {
 

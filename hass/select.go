@@ -108,6 +108,8 @@ func (entity *Select) subscribeMqtt() error {
 		if err != nil {
 			log.Printf("[%s] failed to set value: %s", entity.ObjectId, err.Error())
 		}
+
+		entity.publishState(set)
 	}
 	if token := mqtt.C.Subscribe(entity.CommandTopic, 0, listener); token.Wait() && token.Error() != nil {
 

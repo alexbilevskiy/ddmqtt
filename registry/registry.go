@@ -36,8 +36,23 @@ func ReadKey(direction string) (string, error) {
 	return s, nil
 }
 
-func WriteCommand(command string, params ...string) error {
-	kd, err := registry.OpenKey(registry.CURRENT_USER, BaseKey+DirectionOut, registry.SET_VALUE)
+func writeKey(direction string, value string) error {
+	kw, err := registry.OpenKey(registry.CURRENT_USER, BaseKey+direction, registry.SET_VALUE)
+	if err != nil {
+
+		return errors.New(fmt.Sprintf("open write key error: %s", err.Error()))
+	}
+	defer kw.Close()
+	err = kw.SetStringValue("", value)
+	if err != nil {
+		return errors.New(fmt.Sprintf("write command key error: %s", err.Error()))
+	}
+
+	return nil
+}
+
+func deleteKey(direction string) error {
+	kd, err := registry.OpenKey(registry.CURRENT_USER, BaseKey+direction, registry.SET_VALUE)
 	if err != nil && !errors.Is(err, registry.ErrNotExist) {
 
 		return errors.New(fmt.Sprintf("open delete key error: %s", err.Error()))
@@ -50,17 +65,10 @@ func WriteCommand(command string, params ...string) error {
 		return errors.New(fmt.Sprintf("delete key error: %s", err.Error()))
 	}
 
-	kw, err := registry.OpenKey(registry.CURRENT_USER, BaseKey+DirectionIn, registry.SET_VALUE)
-	if err != nil {
+	return nil
+}
 
-		return errors.New(fmt.Sprintf("open write key error: %s", err.Error()))
-	}
-	defer kw.Close()
-	err = kw.SetStringValue("", fmt.Sprintf("%s %s", command, strings.Join(params, " ")))
-	if err != nil {
-		return errors.New(fmt.Sprintf("write command key error: %s", err.Error()))
-	}
-
+func writeRandomI() error {
 	kwi, err := registry.OpenKey(registry.CURRENT_USER, BaseKey+DirectionIn, registry.SET_VALUE)
 	if err != nil {
 
@@ -73,6 +81,14 @@ func WriteCommand(command string, params ...string) error {
 	if err != nil {
 		return errors.New(fmt.Sprintf("write command i key error: %s", err.Error()))
 	}
+
+	return nil
+}
+
+func WriteCommand(command string, params ...string) error {
+	deleteKey(DirectionOut)
+	writeRandomI()
+	writeKey(DirectionIn, fmt.Sprintf("%s %s", command, strings.Join(params, " ")))
 
 	return nil
 }
