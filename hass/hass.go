@@ -47,6 +47,7 @@ func StartReporting() {
 	if err != nil {
 		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
 	}
+	se.Affected = append(se.Affected, br, cn)
 
 	for {
 		var err error
@@ -163,6 +164,7 @@ func CreateSelectPresets(monitor Device) Select {
 		Device:       monitor,
 		Icon:         "mdi:format-list-bulleted",
 		Options:      make([]string, 0),
+		Affected:     make([]Number, 0),
 	}
 	for _, option := range selector.Presets {
 		selector.Options = append(selector.Options, option.Name)
@@ -173,13 +175,13 @@ func CreateSelectPresets(monitor Device) Select {
 	})
 	selector.SetValueSetter(func(value string) error {
 		found := false
+		var err error
 		for _, option := range selector.Presets {
 			if option.Name != value {
 
 				continue
 			}
 			found = true
-			var err error
 			err = ddmrpc.SetBrightnessLevel(option.Brightness)
 			if err != nil {
 				return err

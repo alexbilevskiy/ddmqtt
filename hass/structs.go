@@ -17,13 +17,13 @@ type NumberEntity interface {
 	GetType() string
 	Init() error
 	DoDiscovery()
-	DoAvailability(available bool)
-	ReportState(state int)
 	ReportValue() error
 	SetValueReader(func() (int, error))
 	SetValueSetter(func(value int) error)
 	SetValue(value int) error
-	SubscribeMqtt() error
+	reportAvailability(available bool)
+	publishState(state int)
+	subscribeMqtt() error
 }
 
 type Number struct {
@@ -54,10 +54,10 @@ type SensorEntity interface {
 	GetType() string
 	Init() error
 	DoDiscovery()
-	DoAvailability(available bool)
-	ReportState(state int)
 	ReportValue() error
 	SetValueReader(func() (int, error))
+	reportAvailability(available bool)
+	publishState(state int)
 }
 
 type Sensor struct {
@@ -77,12 +77,12 @@ type SelectEntity interface {
 	GetType() string
 	Init() error
 	DoDiscovery()
-	DoAvailability(available bool)
-	ReportState(state string)
 	ReportValue() error
 	SetValueSetter(func(value string) error)
 	SetValue(value string) error
-	SubscribeMqtt() error
+	reportAvailability(available bool)
+	publishState(state string)
+	subscribeMqtt() error
 }
 
 type Select struct {
@@ -92,6 +92,7 @@ type Select struct {
 	valueSetter  func(value string) error
 	State        string
 	Presets      []config.Preset
+	Affected     []Number
 	Name         string        `json:"name"`
 	Availability SAvailability `json:"availability"`
 	StateTopic   string        `json:"state_topic"`

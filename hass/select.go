@@ -22,7 +22,7 @@ func (entity *Select) SetValueSetter(setter func(value string) error) {
 
 func (entity *Select) Init() error {
 	entity.DoDiscovery()
-	err := entity.SubscribeMqtt()
+	err := entity.subscribeMqtt()
 	if err != nil {
 		return err
 	}
@@ -50,17 +50,17 @@ func (entity *Select) ReportValue() error {
 	value, err := entity.valueReader()
 	if err != nil {
 		log.Printf("[%s] cannot read value: %s", entity.ObjectId, err.Error())
-		entity.DoAvailability(false)
+		entity.reportAvailability(false)
 
 		return err
 	}
-	entity.DoAvailability(true)
-	entity.ReportState(value)
+	entity.reportAvailability(true)
+	entity.publishState(value)
 
 	return nil
 }
 
-func (entity *Select) DoAvailability(available bool) {
+func (entity *Select) reportAvailability(available bool) {
 	availabilityStatus := "offline"
 	if available {
 		availabilityStatus = "online"
@@ -73,8 +73,8 @@ func (entity *Select) DoAvailability(available bool) {
 	}
 }
 
-func (entity *Select) ReportState(state string) {
-	log.Printf("[%s] publishing state to: %s / %s", entity.ObjectId, entity.StateTopic, state)
+func (entity *Select) publishState(state string) {
+	log.Printf("[%s] publishing state: %s", entity.ObjectId, state)
 
 	pubState := mqtt.C.Publish(entity.StateTopic, 0, false, state)
 	if pubState.Error() != nil {
@@ -83,11 +83,22 @@ func (entity *Select) ReportState(state string) {
 }
 
 func (entity *Select) SetValue(value string) error {
+	err := entity.valueSetter(value)
+	if err != nil {
 
-	return entity.valueSetter(value)
+		return err
+	}
+	for _, number := range entity.Affected {
+		err = number.ReportValue()
+		if err != nil {
+			log.Printf("[%s] failed to update affected entity: %s", entity.ObjectId, number.ObjectId)
+		}
+	}
+
+	return nil
 }
 
-func (entity *Select) SubscribeMqtt() error {
+func (entity *Select) subscribeMqtt() error {
 	listener := func(client mqttLib.Client, msg mqttLib.Message) {
 		if msg.Topic() != entity.CommandTopic {
 			return

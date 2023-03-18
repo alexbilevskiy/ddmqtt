@@ -42,17 +42,17 @@ func (entity *Sensor) ReportValue() error {
 	value, err := entity.valueReader()
 	if err != nil {
 		log.Printf("[%s] cannot read value: %s", entity.ObjectId, err.Error())
-		entity.DoAvailability(false)
+		entity.reportAvailability(false)
 
 		return err
 	}
-	entity.DoAvailability(true)
-	entity.ReportState(value)
+	entity.reportAvailability(true)
+	entity.publishState(value)
 
 	return nil
 }
 
-func (entity *Sensor) DoAvailability(available bool) {
+func (entity *Sensor) reportAvailability(available bool) {
 	availabilityStatus := "offline"
 	if available {
 		availabilityStatus = "online"
@@ -65,8 +65,8 @@ func (entity *Sensor) DoAvailability(available bool) {
 	}
 }
 
-func (entity *Sensor) ReportState(state int) {
-	log.Printf("[%s] publishing state to: %s / %d", entity.ObjectId, entity.StateTopic, state)
+func (entity *Sensor) publishState(state int) {
+	log.Printf("[%s] publishing state: %d", entity.ObjectId, state)
 
 	pubState := mqtt.C.Publish(entity.StateTopic, 0, false, strconv.Itoa(state))
 	if pubState.Error() != nil {

@@ -25,7 +25,7 @@ func (entity *Number) SetValueSetter(setter func(value int) error) {
 
 func (entity *Number) Init() error {
 	entity.DoDiscovery()
-	err := entity.SubscribeMqtt()
+	err := entity.subscribeMqtt()
 	if err != nil {
 		return err
 	}
@@ -53,17 +53,17 @@ func (entity *Number) ReportValue() error {
 	value, err := entity.valueReader()
 	if err != nil {
 		log.Printf("[%s] cannot read value: %s", entity.ObjectId, err.Error())
-		entity.DoAvailability(false)
+		entity.reportAvailability(false)
 
 		return err
 	}
-	entity.DoAvailability(true)
-	entity.ReportState(value)
+	entity.reportAvailability(true)
+	entity.publishState(value)
 
 	return nil
 }
 
-func (entity *Number) DoAvailability(available bool) {
+func (entity *Number) reportAvailability(available bool) {
 	availabilityStatus := "offline"
 	if available {
 		availabilityStatus = "online"
@@ -76,8 +76,8 @@ func (entity *Number) DoAvailability(available bool) {
 	}
 }
 
-func (entity *Number) ReportState(state int) {
-	log.Printf("[%s] publishing state to: %s / %d", entity.ObjectId, entity.StateTopic, state)
+func (entity *Number) publishState(state int) {
+	log.Printf("[%s] publishing state: %d", entity.ObjectId, state)
 
 	pubState := mqtt.C.Publish(entity.StateTopic, 0, false, strconv.Itoa(state))
 	if pubState.Error() != nil {
@@ -90,7 +90,7 @@ func (entity *Number) SetValue(value int) error {
 	return entity.valueSetter(value)
 }
 
-func (entity *Number) SubscribeMqtt() error {
+func (entity *Number) subscribeMqtt() error {
 	listener := func(client mqttLib.Client, msg mqttLib.Message) {
 		r, _ := regexp.Compile(fmt.Sprintf("%s/(%s)/([a-zA-Z0-9_-]+)/set", config.CFG.HassDiscoveryPrefix, TypeNumber))
 		matches := r.FindStringSubmatch(msg.Topic())
