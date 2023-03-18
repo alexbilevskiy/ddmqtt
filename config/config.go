@@ -1,13 +1,12 @@
 package config
 
 import (
-	"ddmqtt/structs"
 	"encoding/json"
 	"log"
 	"os"
 )
 
-var CFG structs.Config
+var CFG Config
 
 func InitConfig(configFile string) {
 	cfgRaw, err := os.ReadFile(configFile)

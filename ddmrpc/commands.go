@@ -40,6 +40,20 @@ func GetMonitorActiveHours() (int, error) {
 	return int(hours64), nil
 }
 
+func GetBrightnessLevel() (int, error) {
+	res, err := registry.ExecuteCommand("GetBrightnessLevel")
+	if err != nil {
+
+		return -1, err
+	}
+	bri64, err := strconv.ParseInt(res, 10, 32)
+	if err != nil {
+		return -1, err
+	}
+
+	return int(bri64), nil
+}
+
 func ExecuteRaw(cmd string) (string, error) {
 
 	return registry.ExecuteCommand(cmd)

@@ -4,23 +4,48 @@ import (
 	"ddmqtt/config"
 	"ddmqtt/device"
 	"ddmqtt/mqtt"
-	"ddmqtt/structs"
 	"encoding/json"
 	"fmt"
 	"log"
 )
 
-var needDiscovery = true
+var needDiscovery = make(map[string]bool, 0)
+var monitor Device
 
 func ReportState() {
-	monitor := device.InitMontor()
+	if monitor == (Device{}) {
+		attrs, err := device.GetAssetAttributes()
+		if err != nil {
+			log.Fatalf("failed to read monitor: %s", err.Error())
+		}
+		monitor = Device{
+			Identifiers:  attrs.ServiceTag,
+			Manufacturer: "Dell",
+			Model:        attrs.ModelCode,
+			Name:         attrs.Model,
+		}
+	}
+
 	SensorActiveHours(monitor)
+	NumberBrightness(monitor)
 }
 
-func doDiscovery(sensor structs.DiscoverySensor, baseTopic string) {
+func doDiscovery(entity Entity, baseTopic string) {
+	var objectId string
+	switch entity.GetType() {
+	case TYPE_SENSOR:
+		objectId = entity.(Sensor).ObjectId
+	case TYPE_NUMBER:
+		objectId = entity.(Number).ObjectId
+	}
+	if _, ok := needDiscovery[objectId]; ok {
+		return
+	}
+	needDiscovery[objectId] = false
+
 	discoveryTopic := fmt.Sprintf("%s/config", baseTopic)
 
-	js, _ := json.Marshal(sensor)
+	js, _ := json.Marshal(entity)
 	log.Printf("publishing discovery to: %s / %s", discoveryTopic, string(js))
 
 	pubToken := mqtt.C.Publish(discoveryTopic, 0, false, js)
@@ -29,36 +54,61 @@ func doDiscovery(sensor structs.DiscoverySensor, baseTopic string) {
 	}
 }
 
-func SensorActiveHours(monitor structs.DiscoveryDevice) {
+func SensorActiveHours(monitor Device) {
 	objectId := fmt.Sprintf("%s_active_hours", monitor.Identifiers)
 	baseTopic := fmt.Sprintf("%s/sensor/%s", config.CFG.HassDiscoveryPrefix, objectId)
-	sensor := structs.DiscoverySensor{
+	hours := Sensor{
 		Name:         "Active hours",
 		StateTopic:   fmt.Sprintf("%s/state", baseTopic),
-		Availability: structs.SAvailability{Topic: fmt.Sprintf("%s/available", baseTopic)},
+		Availability: SAvailability{Topic: fmt.Sprintf("%s/available", baseTopic)},
 		ObjectId:     objectId,
 		UniqueId:     objectId,
 		Device:       monitor,
 	}
 
-	if needDiscovery {
-		doDiscovery(sensor, baseTopic)
-		needDiscovery = false
-	}
+	doDiscovery(hours, baseTopic)
 
 	activeHours, err := device.GetMonitorActiveHours()
 	if err != nil {
 		log.Printf("cannot get active hours: %s", err.Error())
-		doAvailability(sensor.Availability.Topic, false)
+		doAvailability(hours.Availability.Topic, false)
 		return
 	}
-	doAvailability(sensor.Availability.Topic, true)
+	doAvailability(hours.Availability.Topic, true)
+	doState(hours.StateTopic, fmt.Sprintf("%d", activeHours))
+	doSubscribeChanges(baseTopic)
+}
 
-	doState(sensor.StateTopic, fmt.Sprintf("%d", activeHours))
-
-	if token := mqtt.C.Subscribe(fmt.Sprintf("%s/#", baseTopic), 0, nil); token.Wait() && token.Error() != nil {
-		log.Fatalf("failed to subscribe: %s", token.Error())
+func NumberBrightness(monitor Device) {
+	objectId := fmt.Sprintf("%s_brightness", monitor.Identifiers)
+	baseTopic := fmt.Sprintf("%s/number/%s", config.CFG.HassDiscoveryPrefix, objectId)
+	brightness := Number{
+		Name:         "Brightness",
+		StateTopic:   fmt.Sprintf("%s/state", baseTopic),
+		Availability: SAvailability{Topic: fmt.Sprintf("%s/available", baseTopic)},
+		CommandTopic: fmt.Sprintf("%s/set", baseTopic),
+		ObjectId:     objectId,
+		UniqueId:     objectId,
+		Device:       monitor,
+		Icon:         "mdi:brightness-percent",
+		Min:          1,
+		Max:          100,
+		Mode:         "slider",
+		Step:         1,
+		Unit:         "%",
 	}
+
+	doDiscovery(brightness, baseTopic)
+
+	brightnessLevel, err := device.GetBrightnessLevel()
+	if err != nil {
+		log.Printf("cannot get brightness level: %s", err.Error())
+		doAvailability(brightness.Availability.Topic, false)
+		return
+	}
+	doAvailability(brightness.Availability.Topic, true)
+	doState(brightness.StateTopic, fmt.Sprintf("%d", brightnessLevel))
+	doSubscribeChanges(baseTopic)
 }
 
 func doAvailability(availabilityTopic string, available bool) {
@@ -80,5 +130,11 @@ func doState(stateTopic string, state string) {
 	pubState := mqtt.C.Publish(stateTopic, 0, false, state)
 	if pubState.Error() != nil {
 		log.Fatalf("failed to publish state data: %s", pubState.Error())
+	}
+}
+
+func doSubscribeChanges(baseTopic string) {
+	if token := mqtt.C.Subscribe(fmt.Sprintf("%s/#", baseTopic), 0, nil); token.Wait() && token.Error() != nil {
+		log.Fatalf("failed to subscribe: %s", token.Error())
 	}
 }
