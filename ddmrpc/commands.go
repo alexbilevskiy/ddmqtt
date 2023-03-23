@@ -20,7 +20,7 @@ const ReturnTypeInt = "int"
 const ReturnTypeString = "string"
 const ReturnTypeOk = "ok"
 
-var wg sync.WaitGroup
+var mu sync.Mutex
 
 func GetAssetAttributes() (AssetAttributes, error) {
 	var asset AssetAttributes
@@ -155,9 +155,8 @@ func SetPower(value string) error {
 }
 
 func executeCommand(command string, returnType string, params ...string) (string, error) {
-	wg.Wait()
-	wg.Add(1)
-	defer wg.Done()
+	mu.Lock()
+	defer mu.Unlock()
 
 	err := registry.WriteCommand(command, params...)
 	if err != nil {
