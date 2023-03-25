@@ -55,31 +55,38 @@ func StartReporting() {
 		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
 	}
 
+	re := CreateButtonReset(monitor)
+	err = re.Init()
+	if err != nil {
+		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
+	}
+
 	for {
 		var err error
 		err = ah.ReportValue()
 		if err != nil {
 			log.Printf("[%s] failed to report state", ah.ObjectId)
 		}
-		//time.Sleep(200 * time.Millisecond)
 		err = br.ReportValue()
 		if err != nil {
 			log.Printf("[%s] failed to report state", br.ObjectId)
 		}
-		//time.Sleep(200 * time.Millisecond)
 		err = cn.ReportValue()
 		if err != nil {
 			log.Printf("[%s] failed to report state", cn.ObjectId)
 		}
 
-		//time.Sleep(200 * time.Millisecond)
 		err = se.ReportValue()
 		if err != nil {
 			log.Printf("[%s] failed to report state", cn.ObjectId)
 		}
 
-		//time.Sleep(200 * time.Millisecond)
 		err = pw.ReportValue()
+		if err != nil {
+			log.Printf("[%s] failed to report state", cn.ObjectId)
+		}
+
+		err = re.ReportValue()
 		if err != nil {
 			log.Printf("[%s] failed to report state", cn.ObjectId)
 		}
@@ -232,6 +239,26 @@ func CreateSwitchPower(monitor Device) Switch {
 
 	power.SetValueReader(ddmrpc.GetPower)
 	power.SetValueSetter(ddmrpc.SetPower)
+
+	return power
+}
+
+func CreateButtonReset(monitor Device) Button {
+	objectId := fmt.Sprintf("%s_reset", monitor.Identifiers)
+	baseTopic := fmt.Sprintf("%s/button/%s", config.CFG.HassDiscoveryPrefix, objectId)
+	power := Button{
+		Discovered:   false,
+		BaseTopic:    baseTopic,
+		Name:         "Reset",
+		Availability: SAvailability{Topic: fmt.Sprintf("%s/available", baseTopic)},
+		CommandTopic: fmt.Sprintf("%s/press", baseTopic),
+		ObjectId:     objectId,
+		UniqueId:     objectId,
+		Device:       monitor,
+		Icon:         "mdi:restart",
+	}
+
+	power.SetValueSetter(ddmrpc.Reset)
 
 	return power
 }

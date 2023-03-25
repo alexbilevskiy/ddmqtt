@@ -154,6 +154,20 @@ func SetPower(value string) error {
 	return nil
 }
 
+func Reset() error {
+	res, err := executeCommand("ForceReset", ReturnTypeOk)
+	if err != nil {
+
+		return err
+	}
+	if res != ResponseOk {
+
+		return errors.New(fmt.Sprintf("invalid ForceReset response: %s", res))
+	}
+
+	return nil
+}
+
 func executeCommand(command string, returnType string, params ...string) (string, error) {
 	mu.Lock()
 	defer mu.Unlock()

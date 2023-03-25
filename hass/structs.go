@@ -13,6 +13,7 @@ type Device struct {
 const TypeSensor = "sensor"
 const TypeNumber = "number"
 const TypeSelect = "select"
+const TypeButton = "button"
 const TypeSwitch = "switch"
 
 type NumberEntity interface {
@@ -127,6 +128,30 @@ type Switch struct {
 	Name         string        `json:"name"`
 	Availability SAvailability `json:"availability"`
 	StateTopic   string        `json:"state_topic"`
+	CommandTopic string        `json:"command_topic"`
+	ObjectId     string        `json:"object_id"`
+	UniqueId     string        `json:"unique_id"`
+	Device       Device        `json:"device"`
+	Icon         string        `json:"icon"`
+}
+
+type ButtonEntity interface {
+	GetType() string
+	Init() error
+	DoDiscovery()
+	ReportValue() error
+	SetValueSetter(func() error)
+	SetValue() error
+	reportAvailability(available bool)
+	subscribeMqtt() error
+}
+
+type Button struct {
+	Discovered   bool
+	BaseTopic    string
+	valueSetter  func() error
+	Name         string        `json:"name"`
+	Availability SAvailability `json:"availability"`
 	CommandTopic string        `json:"command_topic"`
 	ObjectId     string        `json:"object_id"`
 	UniqueId     string        `json:"unique_id"`
