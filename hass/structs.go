@@ -31,6 +31,8 @@ type NumberEntity interface {
 
 type Number struct {
 	Discovered   bool
+	Avaialable   bool
+	State        int
 	BaseTopic    string
 	valueReader  func() (int, error)
 	valueSetter  func(value int) error
@@ -65,6 +67,8 @@ type SensorEntity interface {
 
 type Sensor struct {
 	Discovered   bool
+	Avaialable   bool
+	State        int
 	BaseTopic    string
 	valueReader  func() (int, error)
 	Name         string        `json:"name"`
@@ -91,10 +95,11 @@ type SelectEntity interface {
 
 type Select struct {
 	Discovered   bool
+	Avaialable   bool
+	State        string
 	BaseTopic    string
 	valueReader  func() (string, error)
 	valueSetter  func(value string) error
-	State        string
 	Presets      []config.Preset
 	Affected     []Number
 	Name         string        `json:"name"`
@@ -123,6 +128,8 @@ type SwitchEntity interface {
 
 type Switch struct {
 	Discovered   bool
+	Avaialable   bool
+	State        string
 	BaseTopic    string
 	valueReader  func() (string, error)
 	valueSetter  func(value string) error
@@ -149,6 +156,7 @@ type ButtonEntity interface {
 
 type Button struct {
 	Discovered   bool
+	Avaialable   bool
 	BaseTopic    string
 	valueSetter  func() error
 	Name         string        `json:"name"`

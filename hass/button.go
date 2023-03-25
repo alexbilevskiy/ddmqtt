@@ -36,7 +36,7 @@ func (entity *Button) DoDiscovery() {
 	js, _ := json.Marshal(entity)
 	log.Printf("[%s] publishing discovery: %s", entity.ObjectId, string(js))
 
-	pubToken := mqtt.C.Publish(discoveryTopic, 0, false, js)
+	pubToken := mqtt.C.Publish(discoveryTopic, 0, true, js)
 	if pubToken.Error() != nil {
 		log.Fatalf("[%s] failed to publish discovery: %s", entity.ObjectId, pubToken.Error())
 	}
@@ -49,6 +49,9 @@ func (entity *Button) ReportValue() error {
 }
 
 func (entity *Button) reportAvailability(available bool) {
+	if entity.Avaialable == available {
+		return
+	}
 	availabilityStatus := "offline"
 	if available {
 		availabilityStatus = "online"
@@ -59,6 +62,7 @@ func (entity *Button) reportAvailability(available bool) {
 	if pubOnlineToken.Error() != nil {
 		log.Fatalf("[%s] failed to publish online state: %s", entity.ObjectId, pubOnlineToken.Error())
 	}
+	entity.Avaialable = available
 }
 
 func (entity *Button) SetValue() error {

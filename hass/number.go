@@ -41,7 +41,7 @@ func (entity *Number) DoDiscovery() {
 	js, _ := json.Marshal(entity)
 	log.Printf("[%s] publishing discovery: %s", entity.ObjectId, string(js))
 
-	pubToken := mqtt.C.Publish(discoveryTopic, 0, false, js)
+	pubToken := mqtt.C.Publish(discoveryTopic, 0, true, js)
 	if pubToken.Error() != nil {
 		log.Fatalf("[%s] failed to publish discovery: %s", entity.ObjectId, pubToken.Error())
 	}
@@ -62,6 +62,9 @@ func (entity *Number) ReportValue() error {
 }
 
 func (entity *Number) reportAvailability(available bool) {
+	if entity.Avaialable == available {
+		return
+	}
 	availabilityStatus := "offline"
 	if available {
 		availabilityStatus = "online"
@@ -72,15 +75,20 @@ func (entity *Number) reportAvailability(available bool) {
 	if pubOnlineToken.Error() != nil {
 		log.Fatalf("[%s] failed to publish online state: %s", entity.ObjectId, pubOnlineToken.Error())
 	}
+	entity.Avaialable = available
 }
 
 func (entity *Number) publishState(state int) {
+	if entity.State == state {
+		return
+	}
 	log.Printf("[%s] publishing state: %d", entity.ObjectId, state)
 
 	pubState := mqtt.C.Publish(entity.StateTopic, 0, false, strconv.Itoa(state))
 	if pubState.Error() != nil {
 		log.Fatalf("[%s] failed to publish state data: %s", entity.ObjectId, pubState.Error())
 	}
+	entity.State = state
 }
 
 func (entity *Number) SetValue(value int) error {
