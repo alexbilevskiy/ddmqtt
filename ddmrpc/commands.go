@@ -141,7 +141,7 @@ func SetPower(value string) error {
 	} else {
 		return errors.New("invalid power value to set")
 	}
-	res, err := executeCommand("SetControl", ReturnTypeString, "D6", arg)
+	res, err := executeCommand("SetControl", ReturnTypeOk, "D6", arg)
 	if err != nil {
 
 		return err

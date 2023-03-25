@@ -81,6 +81,7 @@ type SelectEntity interface {
 	Init() error
 	DoDiscovery()
 	ReportValue() error
+	SetValueReader(func() (string, error))
 	SetValueSetter(func(value string) error)
 	SetValue(value string) error
 	reportAvailability(available bool)
@@ -112,7 +113,7 @@ type SwitchEntity interface {
 	Init() error
 	DoDiscovery()
 	ReportValue() error
-	SetValueReader(func() (int, error))
+	SetValueReader(func() (string, error))
 	SetValueSetter(func(value string) error)
 	SetValue(value string) error
 	reportAvailability(available bool)

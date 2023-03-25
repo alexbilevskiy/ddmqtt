@@ -99,6 +99,8 @@ func CreateSensorActiveHours(monitor Device) Sensor {
 	objectId := fmt.Sprintf("%s_active_hours", monitor.Identifiers)
 	baseTopic := fmt.Sprintf("%s/sensor/%s", config.CFG.HassDiscoveryPrefix, objectId)
 	hours := Sensor{
+		Discovered:   false,
+		BaseTopic:    baseTopic,
 		Name:         "Active hours",
 		StateTopic:   fmt.Sprintf("%s/state", baseTopic),
 		Availability: SAvailability{Topic: fmt.Sprintf("%s/available", baseTopic)},
