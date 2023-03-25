@@ -30,10 +30,10 @@ type NumberEntity interface {
 }
 
 type Number struct {
-	Discovered   bool
-	Avaialable   bool
-	State        int
-	BaseTopic    string
+	Discovered   bool   `json:"-"`
+	Avaialable   bool   `json:"-"`
+	State        int    `json:"-"`
+	BaseTopic    string `json:"-"`
 	valueReader  func() (int, error)
 	valueSetter  func(value int) error
 	Name         string        `json:"name"`
@@ -66,10 +66,10 @@ type SensorEntity interface {
 }
 
 type Sensor struct {
-	Discovered   bool
-	Avaialable   bool
-	State        int
-	BaseTopic    string
+	Discovered   bool   `json:"-"`
+	Avaialable   bool   `json:"-"`
+	State        int    `json:"-"`
+	BaseTopic    string `json:"-"`
 	valueReader  func() (int, error)
 	Name         string        `json:"name"`
 	Availability SAvailability `json:"availability"`
@@ -94,23 +94,23 @@ type SelectEntity interface {
 }
 
 type Select struct {
-	Discovered   bool
-	Avaialable   bool
-	State        string
-	BaseTopic    string
+	Discovered   bool   `json:"-"`
+	Avaialable   bool   `json:"-"`
+	State        string `json:"-"`
+	BaseTopic    string `json:"-"`
 	valueReader  func() (string, error)
 	valueSetter  func(value string) error
-	Presets      []config.Preset
-	Affected     []Number
-	Name         string        `json:"name"`
-	Availability SAvailability `json:"availability"`
-	StateTopic   string        `json:"state_topic"`
-	CommandTopic string        `json:"command_topic"`
-	ObjectId     string        `json:"object_id"`
-	UniqueId     string        `json:"unique_id"`
-	Device       Device        `json:"device"`
-	Options      []string      `json:"options"`
-	Icon         string        `json:"icon"`
+	Presets      []config.Preset `json:"-"`
+	Affected     []Number        `json:"-"`
+	Name         string          `json:"name"`
+	Availability SAvailability   `json:"availability"`
+	StateTopic   string          `json:"state_topic"`
+	CommandTopic string          `json:"command_topic"`
+	ObjectId     string          `json:"object_id"`
+	UniqueId     string          `json:"unique_id"`
+	Device       Device          `json:"device"`
+	Options      []string        `json:"options"`
+	Icon         string          `json:"icon"`
 }
 
 type SwitchEntity interface {
@@ -127,10 +127,10 @@ type SwitchEntity interface {
 }
 
 type Switch struct {
-	Discovered   bool
-	Avaialable   bool
-	State        string
-	BaseTopic    string
+	Discovered   bool   `json:"-"`
+	Avaialable   bool   `json:"-"`
+	State        string `json:"-"`
+	BaseTopic    string `json:"-"`
 	valueReader  func() (string, error)
 	valueSetter  func(value string) error
 	Name         string        `json:"name"`
@@ -155,9 +155,9 @@ type ButtonEntity interface {
 }
 
 type Button struct {
-	Discovered   bool
-	Avaialable   bool
-	BaseTopic    string
+	Discovered   bool   `json:"-"`
+	Avaialable   bool   `json:"-"`
+	BaseTopic    string `json:"-"`
 	valueSetter  func() error
 	Name         string        `json:"name"`
 	Availability SAvailability `json:"availability"`
