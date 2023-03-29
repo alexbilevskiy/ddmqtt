@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"ddmqtt/config"
 	"errors"
 	"fmt"
 	"golang.org/x/sys/windows/registry"
@@ -10,13 +11,12 @@ import (
 	"time"
 )
 
-const BaseKey = `Software\EnTech\RPC\`
+const BaseKey = `\Software\EnTech\RPC\`
 const DirectionIn = `In`
 const DirectionOut = `Out`
 
 func ReadKey(direction string) (string, error) {
-	key := BaseKey + direction
-	k, err := registry.OpenKey(registry.CURRENT_USER, key, registry.QUERY_VALUE)
+	k, err := registry.OpenKey(registry.USERS, config.CFG.RegUser+BaseKey+direction, registry.QUERY_VALUE)
 	if err != nil {
 		if errors.Is(err, registry.ErrNotExist) {
 			return "", nil
@@ -37,7 +37,7 @@ func ReadKey(direction string) (string, error) {
 }
 
 func writeKey(direction string, value string) error {
-	kw, err := registry.OpenKey(registry.CURRENT_USER, BaseKey+direction, registry.SET_VALUE)
+	kw, err := registry.OpenKey(registry.USERS, config.CFG.RegUser+BaseKey+direction, registry.SET_VALUE)
 	if err != nil {
 
 		return errors.New(fmt.Sprintf("open write key error: %s", err.Error()))
@@ -52,7 +52,7 @@ func writeKey(direction string, value string) error {
 }
 
 func deleteKey(direction string) error {
-	kd, err := registry.OpenKey(registry.CURRENT_USER, BaseKey+direction, registry.SET_VALUE)
+	kd, err := registry.OpenKey(registry.USERS, config.CFG.RegUser+BaseKey+direction, registry.SET_VALUE)
 	if err != nil && !errors.Is(err, registry.ErrNotExist) {
 
 		return errors.New(fmt.Sprintf("open delete key error: %s", err.Error()))
@@ -69,7 +69,7 @@ func deleteKey(direction string) error {
 }
 
 func writeRandomI() error {
-	kwi, err := registry.OpenKey(registry.CURRENT_USER, BaseKey+DirectionIn, registry.SET_VALUE)
+	kwi, err := registry.OpenKey(registry.USERS, config.CFG.RegUser+BaseKey+DirectionIn, registry.SET_VALUE)
 	if err != nil {
 
 		return errors.New(fmt.Sprintf("open write i key error: %s", err.Error()))
@@ -86,9 +86,18 @@ func writeRandomI() error {
 }
 
 func WriteCommand(command string, params ...string) error {
-	deleteKey(DirectionOut)
-	writeRandomI()
-	writeKey(DirectionIn, fmt.Sprintf("%s %s", command, strings.Join(params, " ")))
+	err := deleteKey(DirectionOut)
+	if err != nil {
+		return err
+	}
+	err = writeRandomI()
+	if err != nil {
+		return err
+	}
+	err = writeKey(DirectionIn, fmt.Sprintf("%s %s", command, strings.Join(params, " ")))
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
