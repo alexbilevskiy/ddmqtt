@@ -192,14 +192,14 @@ func executeCommand(command string, returnType string, params ...string) (string
 		}
 		if res == ResponseEmpty {
 			if att > 3 {
-				log.Printf("empty response, retrying (%d)", att)
+				log.Printf("[%s] empty response, retrying (%d)", command, att)
 			}
 			time.Sleep(200 * time.Millisecond)
 			continue
 		}
 		if res == ResponseWait {
 			if att > 3 {
-				log.Printf("waiting for response, retrying (%d)", att)
+				log.Printf("[%s] waiting for response, retrying (%d)", command, att)
 			}
 			time.Sleep(100 * time.Millisecond)
 			continue
