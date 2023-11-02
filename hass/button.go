@@ -76,7 +76,7 @@ func (entity *Button) SetValue() error {
 }
 
 func (entity *Button) subscribeMqtt() error {
-	listener := func(client mqttLib.Client, msg mqttLib.Message) {
+	mqtt.AddListener(entity.CommandTopic, func(client mqttLib.Client, msg mqttLib.Message) {
 		if msg.Topic() != entity.CommandTopic {
 			return
 		}
@@ -89,11 +89,7 @@ func (entity *Button) subscribeMqtt() error {
 		if err != nil {
 			log.Printf("[%s] failed to set value: %s", entity.ObjectId, err.Error())
 		}
-	}
-	if token := mqtt.C.Subscribe(entity.CommandTopic, 0, listener); token.Wait() && token.Error() != nil {
-
-		return token.Error()
-	}
+	})
 
 	return nil
 }

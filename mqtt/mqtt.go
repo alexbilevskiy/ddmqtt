@@ -9,23 +9,41 @@ import (
 	"time"
 )
 
-var f mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
-	fmt.Printf("TOPIC: %s\n", msg.Topic())
-	fmt.Printf("MSG: %s\n", msg.Payload())
-}
-
 var C mqtt.Client
+
+var l map[string]func(client mqtt.Client, msg mqtt.Message)
 
 func InitMqtt() {
 	//mqtt.DEBUG = log.New(os.Stdout, "", 0)
 	mqtt.ERROR = log.New(os.Stdout, "", 0)
 	opts := mqtt.NewClientOptions().AddBroker(config.CFG.BrokerAddr).SetClientID(config.CFG.MqttClientId)
 	opts.SetKeepAlive(2 * time.Second)
-	opts.SetDefaultPublishHandler(f)
+	opts.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
+		fmt.Printf("MQTT message received from: %s\n", msg.Topic())
+	})
 	opts.SetPingTimeout(1 * time.Second)
+	opts.SetOnConnectHandler(func(client mqtt.Client) {
+		log.Printf("MQTT connected!")
+		for topic, listener := range l {
+			if token := C.Subscribe(topic, 0, listener); token.Wait() && token.Error() != nil {
+
+				log.Fatalf("failed to re-subscribe to %s: %s", topic, token.Error())
+			}
+		}
+	})
+	opts.SetAutoReconnect(true)
 
 	C = mqtt.NewClient(opts)
 	if token := C.Connect(); token.Wait() && token.Error() != nil {
 		log.Fatalf("failed to connect: %s", token.Error())
+	}
+	l = make(map[string]func(client mqtt.Client, msg mqtt.Message))
+}
+
+func AddListener(topic string, listener func(client mqtt.Client, msg mqtt.Message)) {
+	l[topic] = listener
+	if token := C.Subscribe(topic, 0, listener); token.Wait() && token.Error() != nil {
+
+		log.Fatalf("failed to subscribe to %s: %s", topic, token.Error())
 	}
 }
