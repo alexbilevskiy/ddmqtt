@@ -28,6 +28,9 @@ func InitMqtt(monitorIdentifiers string) {
 	opts.WillRetained = true
 	opts.SetOnConnectHandler(func(client mqtt.Client) {
 		log.Printf("MQTT connected!")
+		if len(l) > 0 {
+			C.Publish(opts.WillTopic, 0, true, "available")
+		}
 		for topic, listener := range l {
 			if token := C.Subscribe(topic, 0, listener); token.Wait() && token.Error() != nil {
 
