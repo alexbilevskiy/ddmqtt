@@ -10,6 +10,7 @@ import (
 
 func main() {
 	config.InitConfig("config.json")
-	mqtt.InitMqtt()
-	hass.StartReporting()
+	monitor := hass.Prepare()
+	mqtt.InitMqtt(monitor.Identifiers)
+	hass.StartReporting(monitor)
 }

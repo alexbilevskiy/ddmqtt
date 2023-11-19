@@ -30,25 +30,26 @@ type NumberEntity interface {
 }
 
 type Number struct {
-	Discovered   bool   `json:"-"`
-	Avaialable   bool   `json:"-"`
-	State        int    `json:"-"`
-	BaseTopic    string `json:"-"`
-	valueReader  func() (int, error)
-	valueSetter  func(value int) error
-	Name         string        `json:"name"`
-	Availability SAvailability `json:"availability"`
-	StateTopic   string        `json:"state_topic"`
-	CommandTopic string        `json:"command_topic"`
-	ObjectId     string        `json:"object_id"`
-	UniqueId     string        `json:"unique_id"`
-	Device       Device        `json:"device"`
-	Icon         string        `json:"icon"`
-	Min          int           `json:"min"`
-	Max          int           `json:"max"`
-	Mode         string        `json:"mode"`
-	Step         int           `json:"step"`
-	Unit         string        `json:"unit_of_measurement"`
+	Discovered     bool   `json:"-"`
+	Avaialable     bool   `json:"-"`
+	State          int    `json:"-"`
+	BaseTopic      string `json:"-"`
+	DiscoveryTopic string `json:"-"`
+	valueReader    func() (int, error)
+	valueSetter    func(value int) error
+	Name           string        `json:"name"`
+	Availability   SAvailability `json:"availability"`
+	StateTopic     string        `json:"state_topic"`
+	CommandTopic   string        `json:"command_topic"`
+	ObjectId       string        `json:"object_id"`
+	UniqueId       string        `json:"unique_id"`
+	Device         Device        `json:"device"`
+	Icon           string        `json:"icon"`
+	Min            int           `json:"min"`
+	Max            int           `json:"max"`
+	Mode           string        `json:"mode"`
+	Step           int           `json:"step"`
+	Unit           string        `json:"unit_of_measurement"`
 }
 
 type SAvailability struct {
@@ -66,18 +67,19 @@ type SensorEntity interface {
 }
 
 type Sensor struct {
-	Discovered   bool   `json:"-"`
-	Avaialable   bool   `json:"-"`
-	State        int    `json:"-"`
-	BaseTopic    string `json:"-"`
-	valueReader  func() (int, error)
-	Name         string        `json:"name"`
-	Availability SAvailability `json:"availability"`
-	StateTopic   string        `json:"state_topic"`
-	ObjectId     string        `json:"object_id"`
-	UniqueId     string        `json:"unique_id"`
-	Device       Device        `json:"device"`
-	Icon         string        `json:"icon"`
+	Discovered     bool   `json:"-"`
+	Avaialable     bool   `json:"-"`
+	State          int    `json:"-"`
+	BaseTopic      string `json:"-"`
+	DiscoveryTopic string `json:"-"`
+	valueReader    func() (int, error)
+	Name           string        `json:"name"`
+	Availability   SAvailability `json:"availability"`
+	StateTopic     string        `json:"state_topic"`
+	ObjectId       string        `json:"object_id"`
+	UniqueId       string        `json:"unique_id"`
+	Device         Device        `json:"device"`
+	Icon           string        `json:"icon"`
 }
 
 type SelectEntity interface {
@@ -94,23 +96,24 @@ type SelectEntity interface {
 }
 
 type Select struct {
-	Discovered   bool   `json:"-"`
-	Avaialable   bool   `json:"-"`
-	State        string `json:"-"`
-	BaseTopic    string `json:"-"`
-	valueReader  func() (string, error)
-	valueSetter  func(value string) error
-	Presets      []config.Preset `json:"-"`
-	Affected     []Number        `json:"-"`
-	Name         string          `json:"name"`
-	Availability SAvailability   `json:"availability"`
-	StateTopic   string          `json:"state_topic"`
-	CommandTopic string          `json:"command_topic"`
-	ObjectId     string          `json:"object_id"`
-	UniqueId     string          `json:"unique_id"`
-	Device       Device          `json:"device"`
-	Options      []string        `json:"options"`
-	Icon         string          `json:"icon"`
+	Discovered     bool   `json:"-"`
+	Avaialable     bool   `json:"-"`
+	State          string `json:"-"`
+	BaseTopic      string `json:"-"`
+	DiscoveryTopic string `json:"-"`
+	valueReader    func() (string, error)
+	valueSetter    func(value string) error
+	Presets        []config.Preset `json:"-"`
+	Affected       []Number        `json:"-"`
+	Name           string          `json:"name"`
+	Availability   SAvailability   `json:"availability"`
+	StateTopic     string          `json:"state_topic"`
+	CommandTopic   string          `json:"command_topic"`
+	ObjectId       string          `json:"object_id"`
+	UniqueId       string          `json:"unique_id"`
+	Device         Device          `json:"device"`
+	Options        []string        `json:"options"`
+	Icon           string          `json:"icon"`
 }
 
 type SwitchEntity interface {
@@ -127,20 +130,21 @@ type SwitchEntity interface {
 }
 
 type Switch struct {
-	Discovered   bool   `json:"-"`
-	Avaialable   bool   `json:"-"`
-	State        string `json:"-"`
-	BaseTopic    string `json:"-"`
-	valueReader  func() (string, error)
-	valueSetter  func(value string) error
-	Name         string        `json:"name"`
-	Availability SAvailability `json:"availability"`
-	StateTopic   string        `json:"state_topic"`
-	CommandTopic string        `json:"command_topic"`
-	ObjectId     string        `json:"object_id"`
-	UniqueId     string        `json:"unique_id"`
-	Device       Device        `json:"device"`
-	Icon         string        `json:"icon"`
+	Discovered     bool   `json:"-"`
+	Avaialable     bool   `json:"-"`
+	State          string `json:"-"`
+	BaseTopic      string `json:"-"`
+	DiscoveryTopic string `json:"-"`
+	valueReader    func() (string, error)
+	valueSetter    func(value string) error
+	Name           string        `json:"name"`
+	Availability   SAvailability `json:"availability"`
+	StateTopic     string        `json:"state_topic"`
+	CommandTopic   string        `json:"command_topic"`
+	ObjectId       string        `json:"object_id"`
+	UniqueId       string        `json:"unique_id"`
+	Device         Device        `json:"device"`
+	Icon           string        `json:"icon"`
 }
 
 type ButtonEntity interface {
@@ -155,15 +159,16 @@ type ButtonEntity interface {
 }
 
 type Button struct {
-	Discovered   bool   `json:"-"`
-	Avaialable   bool   `json:"-"`
-	BaseTopic    string `json:"-"`
-	valueSetter  func() error
-	Name         string        `json:"name"`
-	Availability SAvailability `json:"availability"`
-	CommandTopic string        `json:"command_topic"`
-	ObjectId     string        `json:"object_id"`
-	UniqueId     string        `json:"unique_id"`
-	Device       Device        `json:"device"`
-	Icon         string        `json:"icon"`
+	Discovered     bool   `json:"-"`
+	Avaialable     bool   `json:"-"`
+	BaseTopic      string `json:"-"`
+	DiscoveryTopic string `json:"-"`
+	valueSetter    func() error
+	Name           string        `json:"name"`
+	Availability   SAvailability `json:"availability"`
+	CommandTopic   string        `json:"command_topic"`
+	ObjectId       string        `json:"object_id"`
+	UniqueId       string        `json:"unique_id"`
+	Device         Device        `json:"device"`
+	Icon           string        `json:"icon"`
 }

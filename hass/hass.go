@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func StartReporting() {
+func Prepare() Device {
 	var monitor Device
 
 	attrs, err := ddmrpc.GetAssetAttributes()
@@ -27,6 +27,11 @@ func StartReporting() {
 		SwVersion:    fw,
 	}
 
+	return monitor
+}
+
+func StartReporting(monitor Device) {
+	var err error
 	ah := CreateSensorActiveHours(monitor)
 	ah.Init()
 
@@ -97,17 +102,18 @@ func StartReporting() {
 
 func CreateSensorActiveHours(monitor Device) Sensor {
 	objectId := fmt.Sprintf("%s_active_hours", monitor.Identifiers)
-	baseTopic := fmt.Sprintf("%s/sensor/%s", config.CFG.HassDiscoveryPrefix, objectId)
+	baseTopic := fmt.Sprintf("%s/%s", config.CFG.MqttRootTopic, objectId)
 	hours := Sensor{
-		Discovered:   false,
-		BaseTopic:    baseTopic,
-		Name:         "Active hours",
-		StateTopic:   fmt.Sprintf("%s/state", baseTopic),
-		Availability: SAvailability{Topic: fmt.Sprintf("%s/available", baseTopic)},
-		ObjectId:     objectId,
-		UniqueId:     objectId,
-		Device:       monitor,
-		Icon:         "mdi:clock-outline",
+		Discovered:     false,
+		BaseTopic:      baseTopic,
+		Name:           "Active hours",
+		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
+		DiscoveryTopic: fmt.Sprintf("%s/sensor/%s/config", config.CFG.HassDiscoveryPrefix, objectId),
+		Availability:   SAvailability{Topic: fmt.Sprintf("%s/%s/available", config.CFG.MqttRootTopic, monitor.Identifiers)},
+		ObjectId:       objectId,
+		UniqueId:       objectId,
+		Device:         monitor,
+		Icon:           "mdi:clock-outline",
 	}
 
 	hours.SetValueReader(ddmrpc.GetMonitorActiveHours)
@@ -117,23 +123,24 @@ func CreateSensorActiveHours(monitor Device) Sensor {
 
 func CreateNumberBrightness(monitor Device) Number {
 	objectId := fmt.Sprintf("%s_brightness", monitor.Identifiers)
-	baseTopic := fmt.Sprintf("%s/number/%s", config.CFG.HassDiscoveryPrefix, objectId)
+	baseTopic := fmt.Sprintf("%s/%s", config.CFG.MqttRootTopic, objectId)
 	brightness := Number{
-		Discovered:   false,
-		BaseTopic:    baseTopic,
-		Name:         "Brightness",
-		StateTopic:   fmt.Sprintf("%s/state", baseTopic),
-		Availability: SAvailability{Topic: fmt.Sprintf("%s/available", baseTopic)},
-		CommandTopic: fmt.Sprintf("%s/set", baseTopic),
-		ObjectId:     objectId,
-		UniqueId:     objectId,
-		Device:       monitor,
-		Icon:         "mdi:brightness-percent",
-		Min:          0,
-		Max:          100,
-		Mode:         "slider",
-		Step:         1,
-		Unit:         "%",
+		Discovered:     false,
+		BaseTopic:      baseTopic,
+		Name:           "Brightness",
+		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
+		DiscoveryTopic: fmt.Sprintf("%s/number/%s/config", config.CFG.HassDiscoveryPrefix, objectId),
+		Availability:   SAvailability{Topic: fmt.Sprintf("%s/%s/available", config.CFG.MqttRootTopic, monitor.Identifiers)},
+		CommandTopic:   fmt.Sprintf("%s/set", baseTopic),
+		ObjectId:       objectId,
+		UniqueId:       objectId,
+		Device:         monitor,
+		Icon:           "mdi:brightness-percent",
+		Min:            0,
+		Max:            100,
+		Mode:           "slider",
+		Step:           1,
+		Unit:           "%",
 	}
 	brightness.SetValueReader(ddmrpc.GetBrightnessLevel)
 	brightness.SetValueSetter(ddmrpc.SetBrightnessLevel)
@@ -143,23 +150,24 @@ func CreateNumberBrightness(monitor Device) Number {
 
 func CreateNumberContrast(monitor Device) Number {
 	objectId := fmt.Sprintf("%s_contrast", monitor.Identifiers)
-	baseTopic := fmt.Sprintf("%s/number/%s", config.CFG.HassDiscoveryPrefix, objectId)
+	baseTopic := fmt.Sprintf("%s/%s", config.CFG.MqttRootTopic, objectId)
 	contrast := Number{
-		Discovered:   false,
-		BaseTopic:    baseTopic,
-		Name:         "Contrast",
-		StateTopic:   fmt.Sprintf("%s/state", baseTopic),
-		Availability: SAvailability{Topic: fmt.Sprintf("%s/available", baseTopic)},
-		CommandTopic: fmt.Sprintf("%s/set", baseTopic),
-		ObjectId:     objectId,
-		UniqueId:     objectId,
-		Device:       monitor,
-		Icon:         "mdi:contrast-box",
-		Min:          0,
-		Max:          100,
-		Mode:         "slider",
-		Step:         1,
-		Unit:         "%",
+		Discovered:     false,
+		BaseTopic:      baseTopic,
+		Name:           "Contrast",
+		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
+		DiscoveryTopic: fmt.Sprintf("%s/number/%s/config", config.CFG.HassDiscoveryPrefix, objectId),
+		Availability:   SAvailability{Topic: fmt.Sprintf("%s/%s/available", config.CFG.MqttRootTopic, monitor.Identifiers)},
+		CommandTopic:   fmt.Sprintf("%s/set", baseTopic),
+		ObjectId:       objectId,
+		UniqueId:       objectId,
+		Device:         monitor,
+		Icon:           "mdi:contrast-box",
+		Min:            0,
+		Max:            100,
+		Mode:           "slider",
+		Step:           1,
+		Unit:           "%",
 	}
 
 	contrast.SetValueReader(ddmrpc.GetContrastLevel)
@@ -170,22 +178,23 @@ func CreateNumberContrast(monitor Device) Number {
 
 func CreateSelectPresets(monitor Device) Select {
 	objectId := fmt.Sprintf("%s_presets", monitor.Identifiers)
-	baseTopic := fmt.Sprintf("%s/select/%s", config.CFG.HassDiscoveryPrefix, objectId)
+	baseTopic := fmt.Sprintf("%s/%s", config.CFG.MqttRootTopic, objectId)
 	selector := Select{
-		Discovered:   false,
-		BaseTopic:    baseTopic,
-		Name:         "Preset",
-		State:        "",
-		Presets:      config.CFG.Presets,
-		StateTopic:   fmt.Sprintf("%s/state", baseTopic),
-		Availability: SAvailability{Topic: fmt.Sprintf("%s/available", baseTopic)},
-		CommandTopic: fmt.Sprintf("%s/set", baseTopic),
-		ObjectId:     objectId,
-		UniqueId:     objectId,
-		Device:       monitor,
-		Icon:         "mdi:format-list-bulleted",
-		Options:      append(make([]string, 0), ""),
-		Affected:     make([]Number, 0),
+		Discovered:     false,
+		BaseTopic:      baseTopic,
+		Name:           "Preset",
+		State:          "",
+		Presets:        config.CFG.Presets,
+		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
+		DiscoveryTopic: fmt.Sprintf("%s/select/%s/config", config.CFG.HassDiscoveryPrefix, objectId),
+		Availability:   SAvailability{Topic: fmt.Sprintf("%s/%s/available", config.CFG.MqttRootTopic, monitor.Identifiers)},
+		CommandTopic:   fmt.Sprintf("%s/set", baseTopic),
+		ObjectId:       objectId,
+		UniqueId:       objectId,
+		Device:         monitor,
+		Icon:           "mdi:format-list-bulleted",
+		Options:        append(make([]string, 0), ""),
+		Affected:       make([]Number, 0),
 	}
 	for _, option := range selector.Presets {
 		selector.Options = append(selector.Options, option.Name)
@@ -225,18 +234,19 @@ func CreateSelectPresets(monitor Device) Select {
 
 func CreateSwitchPower(monitor Device) Switch {
 	objectId := fmt.Sprintf("%s_power", monitor.Identifiers)
-	baseTopic := fmt.Sprintf("%s/switch/%s", config.CFG.HassDiscoveryPrefix, objectId)
+	baseTopic := fmt.Sprintf("%s/%s", config.CFG.MqttRootTopic, objectId)
 	power := Switch{
-		Discovered:   false,
-		BaseTopic:    baseTopic,
-		Name:         "Power",
-		StateTopic:   fmt.Sprintf("%s/state", baseTopic),
-		Availability: SAvailability{Topic: fmt.Sprintf("%s/available", baseTopic)},
-		CommandTopic: fmt.Sprintf("%s/set", baseTopic),
-		ObjectId:     objectId,
-		UniqueId:     objectId,
-		Device:       monitor,
-		Icon:         "mdi:power",
+		Discovered:     false,
+		BaseTopic:      baseTopic,
+		Name:           "Power",
+		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
+		DiscoveryTopic: fmt.Sprintf("%s/switch/%s/config", config.CFG.HassDiscoveryPrefix, objectId),
+		Availability:   SAvailability{Topic: fmt.Sprintf("%s/%s/available", config.CFG.MqttRootTopic, monitor.Identifiers)},
+		CommandTopic:   fmt.Sprintf("%s/set", baseTopic),
+		ObjectId:       objectId,
+		UniqueId:       objectId,
+		Device:         monitor,
+		Icon:           "mdi:power",
 	}
 
 	power.SetValueReader(ddmrpc.GetPower)
@@ -247,17 +257,18 @@ func CreateSwitchPower(monitor Device) Switch {
 
 func CreateButtonReset(monitor Device) Button {
 	objectId := fmt.Sprintf("%s_reset", monitor.Identifiers)
-	baseTopic := fmt.Sprintf("%s/button/%s", config.CFG.HassDiscoveryPrefix, objectId)
+	baseTopic := fmt.Sprintf("%s/%s", config.CFG.MqttRootTopic, objectId)
 	power := Button{
-		Discovered:   false,
-		BaseTopic:    baseTopic,
-		Name:         "Reset",
-		Availability: SAvailability{Topic: fmt.Sprintf("%s/available", baseTopic)},
-		CommandTopic: fmt.Sprintf("%s/press", baseTopic),
-		ObjectId:     objectId,
-		UniqueId:     objectId,
-		Device:       monitor,
-		Icon:         "mdi:restart",
+		Discovered:     false,
+		BaseTopic:      baseTopic,
+		Name:           "Reset",
+		DiscoveryTopic: fmt.Sprintf("%s/button/%s/config", config.CFG.HassDiscoveryPrefix, objectId),
+		Availability:   SAvailability{Topic: fmt.Sprintf("%s/%s/available", config.CFG.MqttRootTopic, monitor.Identifiers)},
+		CommandTopic:   fmt.Sprintf("%s/press", baseTopic),
+		ObjectId:       objectId,
+		UniqueId:       objectId,
+		Device:         monitor,
+		Icon:           "mdi:restart",
 	}
 
 	power.SetValueSetter(ddmrpc.Reset)

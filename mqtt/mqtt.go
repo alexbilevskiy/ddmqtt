@@ -13,7 +13,7 @@ var C mqtt.Client
 
 var l map[string]func(client mqtt.Client, msg mqtt.Message)
 
-func InitMqtt() {
+func InitMqtt(monitorIdentifiers string) {
 	//mqtt.DEBUG = log.New(os.Stdout, "", 0)
 	mqtt.ERROR = log.New(os.Stdout, "", 0)
 	opts := mqtt.NewClientOptions().AddBroker(config.CFG.BrokerAddr).SetClientID(config.CFG.MqttClientId)
@@ -22,6 +22,10 @@ func InitMqtt() {
 		fmt.Printf("MQTT message received from: %s\n", msg.Topic())
 	})
 	opts.SetPingTimeout(1 * time.Second)
+	opts.WillEnabled = true
+	opts.WillTopic = fmt.Sprintf("%s/%s/available", config.CFG.MqttRootTopic, monitorIdentifiers)
+	opts.WillPayload = []byte("offline")
+	opts.WillRetained = true
 	opts.SetOnConnectHandler(func(client mqtt.Client) {
 		log.Printf("MQTT connected!")
 		for topic, listener := range l {

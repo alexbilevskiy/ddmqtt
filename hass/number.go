@@ -3,7 +3,6 @@ package hass
 import (
 	"ddmqtt/mqtt"
 	"encoding/json"
-	"fmt"
 	mqttLib "github.com/eclipse/paho.mqtt.golang"
 	"log"
 	"strconv"
@@ -36,12 +35,10 @@ func (entity *Number) DoDiscovery() {
 		return
 	}
 
-	discoveryTopic := fmt.Sprintf("%s/config", entity.BaseTopic)
-
 	js, _ := json.Marshal(entity)
 	log.Printf("[%s] publishing discovery: %s", entity.ObjectId, string(js))
 
-	pubToken := mqtt.C.Publish(discoveryTopic, 0, true, js)
+	pubToken := mqtt.C.Publish(entity.DiscoveryTopic, 0, true, js)
 	if pubToken.Error() != nil {
 		log.Fatalf("[%s] failed to publish discovery: %s", entity.ObjectId, pubToken.Error())
 	}
