@@ -26,11 +26,11 @@ func NewClient(cfg *config.Config) *Client {
 
 func (m *Client) Connect(monitorIdentifiers string) error {
 	opts := mqtt.NewClientOptions().AddBroker(m.cfg.BrokerAddr).SetClientID(m.cfg.MqttClientId)
-	opts.SetKeepAlive(2 * time.Second)
+	opts.SetKeepAlive(5 * time.Second)
 	opts.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
 		fmt.Printf("MQTT message received from: %s\n", msg.Topic())
 	})
-	opts.SetPingTimeout(1 * time.Second)
+	opts.SetPingTimeout(3 * time.Second)
 	opts.WillEnabled = true
 	opts.WillTopic = fmt.Sprintf("%s/%s/available", m.cfg.MqttRootTopic, monitorIdentifiers)
 	opts.WillPayload = []byte("offline")

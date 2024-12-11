@@ -48,6 +48,9 @@ func (d *DdmRpc) GetAssetAttributes() (AssetAttributes, error) {
 		return asset, err
 	}
 	parts := strings.Split(res, ",")
+	if parts[0] == "" {
+		return asset, errors.New("invalid AssetAttributes response")
+	}
 	asset = AssetAttributes{
 		ModelCode:    parts[0],
 		Model:        parts[1],

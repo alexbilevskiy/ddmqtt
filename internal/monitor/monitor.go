@@ -40,6 +40,7 @@ func NewMonitor(cfg *config.Config, ddmrpc DDMRPCClient, mqtt *mqtt.Client) Moni
 	if err != nil {
 		log.Fatalf("failed to read monitor fw: %s", err.Error())
 	}
+	log.Printf("found monitor: %v", attrs)
 	device = hass.Device{
 		Identifiers:  attrs.ServiceTag,
 		Manufacturer: "Dell",
