@@ -38,7 +38,7 @@ func (m *Client) Connect(monitorIdentifiers string) error {
 	opts.SetOnConnectHandler(func(client mqtt.Client) {
 		log.Printf("MQTT connected!")
 		if len(m.listeners) > 0 {
-			m.client.Publish(opts.WillTopic, 0, true, "available")
+			m.client.Publish(opts.WillTopic, 0, true, "online")
 		}
 		for topic, listener := range m.listeners {
 			if token := m.client.Subscribe(topic, 0, listener); token.Wait() && token.Error() != nil {
