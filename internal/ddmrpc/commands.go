@@ -3,9 +3,11 @@ package ddmrpc
 import (
 	"ddmqtt/internal/config"
 	"ddmqtt/internal/registry"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -61,6 +63,30 @@ func (d *DdmRpc) GetAssetAttributes() (AssetAttributes, error) {
 	asset.ActiveHours = hours
 
 	return asset, nil
+}
+
+func (d *DdmRpc) GetCapabilities() (Capabilities, error) {
+	var caps Capabilities
+	res, err := d.executeCommand("GetCapabilities", ReturnTypeString)
+	if err != nil {
+
+		return caps, err
+	}
+	re := regexp.MustCompile(`60\(((?:[0-9a-f]{2} )+)\)`)
+	matches := re.FindAllStringSubmatch(res, -1)
+	if len(matches) == 0 || len(matches[0]) == 0 {
+		return caps, errors.New("invalid GetCapabilities response")
+	}
+	for _, input := range strings.Split(strings.Trim(matches[0][1], " "), " ") {
+		in, err := hex.DecodeString(input)
+		if err != nil {
+			log.Printf("invalid input code: %s", input)
+			continue
+		}
+		caps.AvailableInputs = append(caps.AvailableInputs, in[0])
+	}
+
+	return caps, nil
 }
 
 func (d *DdmRpc) GetFirmwareVersion() (string, error) {
@@ -163,6 +189,38 @@ func (d *DdmRpc) SetPower(value string) error {
 		return errors.New("invalid power value to set")
 	}
 	res, err := d.executeCommand("SetControl", ReturnTypeOk, "D6", arg)
+	if err != nil {
+
+		return err
+	}
+	if res != ResponseOk {
+
+		return errors.New(fmt.Sprintf("invalid SetPower response: %s", res))
+	}
+
+	return nil
+}
+
+func (d *DdmRpc) GetActiveInput() (byte, error) {
+	res, err := d.executeCommand("GetControl 60", ReturnTypeString)
+	if err != nil {
+
+		return 0, err
+	}
+	if len(res) != 4 {
+
+		return 0, errors.New("invalid active input response")
+	}
+	in, err := hex.DecodeString(res)
+	if err != nil {
+
+		return 0, errors.New("invalid active input response")
+	}
+	return in[1], nil
+}
+
+func (d *DdmRpc) SetActiveInput(input byte) error {
+	res, err := d.executeCommand("SetActiveInput", ReturnTypeOk, fmt.Sprintf("%02x", input))
 	if err != nil {
 
 		return err

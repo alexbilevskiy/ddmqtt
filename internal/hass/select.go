@@ -1,7 +1,6 @@
 package hass
 
 import (
-	"ddmqtt/internal/config"
 	"encoding/json"
 	"log"
 )
@@ -15,17 +14,16 @@ type Select struct {
 	valueReader    func() (string, error)
 	valueSetter    func(value string) error
 	mqtt           mqttClient
-	Presets        []config.Preset `json:"-"`
-	Affected       []Number        `json:"-"`
-	Name           string          `json:"name"`
-	Availability   SAvailability   `json:"availability"`
-	StateTopic     string          `json:"state_topic"`
-	CommandTopic   string          `json:"command_topic"`
-	ObjectId       string          `json:"object_id"`
-	UniqueId       string          `json:"unique_id"`
-	Device         *Device         `json:"device"`
-	Options        []string        `json:"options"`
-	Icon           string          `json:"icon"`
+	Affected       []Number      `json:"-"`
+	Name           string        `json:"name"`
+	Availability   SAvailability `json:"availability"`
+	StateTopic     string        `json:"state_topic"`
+	CommandTopic   string        `json:"command_topic"`
+	ObjectId       string        `json:"object_id"`
+	UniqueId       string        `json:"unique_id"`
+	Device         *Device       `json:"device"`
+	Options        []string      `json:"options"`
+	Icon           string        `json:"icon"`
 }
 
 func (entity *Select) SetMqtt(mqtt mqttClient) {

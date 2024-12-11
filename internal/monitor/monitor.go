@@ -12,6 +12,7 @@ import (
 
 type DDMRPCClient interface {
 	GetAssetAttributes() (ddmrpc.AssetAttributes, error)
+	GetCapabilities() (ddmrpc.Capabilities, error)
 	GetFirmwareVersion() (string, error)
 	GetMonitorActiveHours() (int, error)
 	GetBrightnessLevel() (int, error)
@@ -20,13 +21,16 @@ type DDMRPCClient interface {
 	SetContrastLevel(contrast int) error
 	GetPower() (string, error)
 	SetPower(value string) error
+	GetActiveInput() (byte, error)
+	SetActiveInput(input byte) error
 	Reset() error
 }
 type Monitor struct {
-	cfg    *config.Config
-	ddmrpc DDMRPCClient
-	mqtt   *mqtt.Client
-	device *hass.Device
+	cfg          *config.Config
+	ddmrpc       DDMRPCClient
+	mqtt         *mqtt.Client
+	device       *hass.Device
+	capabilities ddmrpc.Capabilities
 }
 
 func NewMonitor(cfg *config.Config, ddmrpc DDMRPCClient, mqtt *mqtt.Client) Monitor {
@@ -40,6 +44,10 @@ func NewMonitor(cfg *config.Config, ddmrpc DDMRPCClient, mqtt *mqtt.Client) Moni
 	if err != nil {
 		log.Fatalf("failed to read monitor fw: %s", err.Error())
 	}
+	caps, err := ddmrpc.GetCapabilities()
+	if err != nil {
+		log.Fatalf("failed to read monitor caps: %s", err.Error())
+	}
 	log.Printf("found monitor: %v", attrs)
 	device = hass.Device{
 		Identifiers:  attrs.ServiceTag,
@@ -50,10 +58,11 @@ func NewMonitor(cfg *config.Config, ddmrpc DDMRPCClient, mqtt *mqtt.Client) Moni
 	}
 
 	return Monitor{
-		cfg:    cfg,
-		ddmrpc: ddmrpc,
-		mqtt:   mqtt,
-		device: &device,
+		cfg:          cfg,
+		ddmrpc:       ddmrpc,
+		mqtt:         mqtt,
+		device:       &device,
+		capabilities: caps,
 	}
 }
 
@@ -144,7 +153,6 @@ func (m *Monitor) CreateSelectPresets() hass.Select {
 		BaseTopic:      baseTopic,
 		Name:           "Preset",
 		State:          "",
-		Presets:        m.cfg.Presets,
 		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
 		DiscoveryTopic: fmt.Sprintf("%s/select/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
 		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/%s/available", m.cfg.MqttRootTopic, m.device.Identifiers)},
@@ -156,7 +164,7 @@ func (m *Monitor) CreateSelectPresets() hass.Select {
 		Options:        append(make([]string, 0), ""),
 		Affected:       make([]hass.Number, 0),
 	}
-	for _, option := range selector.Presets {
+	for _, option := range m.cfg.Presets {
 		selector.Options = append(selector.Options, option.Name)
 	}
 
@@ -167,7 +175,7 @@ func (m *Monitor) CreateSelectPresets() hass.Select {
 	selector.SetValueSetter(func(value string) error {
 		found := false
 		var err error
-		for _, option := range selector.Presets {
+		for _, option := range m.cfg.Presets {
 			if option.Name != value {
 
 				continue
@@ -178,6 +186,70 @@ func (m *Monitor) CreateSelectPresets() hass.Select {
 				return err
 			}
 			err = m.ddmrpc.SetContrastLevel(option.Contrast)
+			if err != nil {
+				return err
+			}
+			selector.State = value
+		}
+		if !found {
+			log.Printf("[%s] not found option `%s`", selector.ObjectId, value)
+		}
+
+		return nil
+	})
+
+	return selector
+}
+
+func (m *Monitor) CreateSelectInput() hass.Select {
+	objectId := fmt.Sprintf("%s_input", m.device.Identifiers)
+	baseTopic := fmt.Sprintf("%s/%s", m.cfg.MqttRootTopic, objectId)
+	selector := hass.Select{
+		Discovered:     false,
+		BaseTopic:      baseTopic,
+		Name:           "Input",
+		State:          "",
+		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
+		DiscoveryTopic: fmt.Sprintf("%s/select/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
+		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/%s/available", m.cfg.MqttRootTopic, m.device.Identifiers)},
+		CommandTopic:   fmt.Sprintf("%s/set", baseTopic),
+		ObjectId:       objectId,
+		UniqueId:       objectId,
+		Device:         m.device,
+		Icon:           "mdi:import",
+		Options:        append(make([]string, 0), ""),
+		Affected:       make([]hass.Number, 0),
+	}
+	for _, option := range m.capabilities.AvailableInputs {
+		if _, ok := ddmrpc.KnownInputs[option]; !ok {
+			continue
+		}
+		selector.Options = append(selector.Options, ddmrpc.KnownInputs[option])
+	}
+
+	selector.SetMqtt(m.mqtt)
+	selector.SetValueReader(func() (string, error) {
+		input, err := m.ddmrpc.GetActiveInput()
+		if err != nil {
+			return "", err
+		}
+		_, ok := ddmrpc.KnownInputs[input]
+		if !ok {
+			log.Printf("[%s] unknown input `%x`", selector.ObjectId, input)
+			return "", err
+		}
+		return ddmrpc.KnownInputs[input], nil
+	})
+	selector.SetValueSetter(func(value string) error {
+		found := false
+		var err error
+		for input, option := range ddmrpc.KnownInputs {
+			if option != value {
+
+				continue
+			}
+			found = true
+			err = m.ddmrpc.SetActiveInput(input)
 			if err != nil {
 				return err
 			}
@@ -266,6 +338,12 @@ func (m *Monitor) StartReporting() {
 	}
 	se.Affected = append(se.Affected, br, cn)
 
+	si := m.CreateSelectInput()
+	err = si.Init()
+	if err != nil {
+		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
+	}
+
 	pw := m.CreateSwitchPower()
 	err = pw.Init()
 	if err != nil {
@@ -294,6 +372,11 @@ func (m *Monitor) StartReporting() {
 		}
 
 		err = se.ReportValue()
+		if err != nil {
+			log.Printf("[%s] failed to report state", cn.ObjectId)
+		}
+
+		err = si.ReportValue()
 		if err != nil {
 			log.Printf("[%s] failed to report state", cn.ObjectId)
 		}
