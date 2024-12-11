@@ -1,14 +1,28 @@
 package hass
 
 import (
-	"ddmqtt/mqtt"
 	"encoding/json"
-	mqttLib "github.com/eclipse/paho.mqtt.golang"
 	"log"
 )
 
-func (entity *Button) GetType() string {
-	return TypeButton
+type Button struct {
+	Discovered     bool   `json:"-"`
+	Avaialable     bool   `json:"-"`
+	BaseTopic      string `json:"-"`
+	DiscoveryTopic string `json:"-"`
+	valueSetter    func() error
+	mqtt           mqttClient
+	Name           string        `json:"name"`
+	Availability   SAvailability `json:"availability"`
+	CommandTopic   string        `json:"command_topic"`
+	ObjectId       string        `json:"object_id"`
+	UniqueId       string        `json:"unique_id"`
+	Device         *Device       `json:"device"`
+	Icon           string        `json:"icon"`
+}
+
+func (entity *Button) SetMqtt(mqtt mqttClient) {
+	entity.mqtt = mqtt
 }
 
 func (entity *Button) SetValueSetter(setter func() error) {
@@ -33,9 +47,9 @@ func (entity *Button) DoDiscovery() {
 	js, _ := json.Marshal(entity)
 	log.Printf("[%s] publishing discovery: %s", entity.ObjectId, string(js))
 
-	pubToken := mqtt.C.Publish(entity.DiscoveryTopic, 0, true, js)
-	if pubToken.Error() != nil {
-		log.Fatalf("[%s] failed to publish discovery: %s", entity.ObjectId, pubToken.Error())
+	err := entity.mqtt.Publish(entity.DiscoveryTopic, true, js)
+	if err != nil {
+		log.Printf("[%s] failed to publish discovery: %s", entity.ObjectId, err.Error())
 	}
 }
 
@@ -55,9 +69,9 @@ func (entity *Button) reportAvailability(available bool) {
 	}
 	log.Printf("[%s] publishing availability: %s", entity.ObjectId, availabilityStatus)
 
-	pubOnlineToken := mqtt.C.Publish(entity.Availability.Topic, 0, false, availabilityStatus)
-	if pubOnlineToken.Error() != nil {
-		log.Fatalf("[%s] failed to publish online state: %s", entity.ObjectId, pubOnlineToken.Error())
+	err := entity.mqtt.Publish(entity.Availability.Topic, false, availabilityStatus)
+	if err != nil {
+		log.Printf("[%s] failed to publish online state: %s", entity.ObjectId, err.Error())
 	}
 	entity.Avaialable = available
 }
@@ -73,11 +87,8 @@ func (entity *Button) SetValue() error {
 }
 
 func (entity *Button) subscribeMqtt() error {
-	mqtt.AddListener(entity.CommandTopic, func(client mqttLib.Client, msg mqttLib.Message) {
-		if msg.Topic() != entity.CommandTopic {
-			return
-		}
-		set := string(msg.Payload())
+	entity.mqtt.AddListener(entity.CommandTopic, func(payload []byte) {
+		set := string(payload)
 		if set != "PRESS" {
 			log.Printf("[%s] invalid command received: %s", entity.ObjectId, set)
 			return

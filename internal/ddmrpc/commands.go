@@ -1,7 +1,8 @@
 package ddmrpc
 
 import (
-	"ddmqtt/registry"
+	"ddmqtt/internal/config"
+	"ddmqtt/internal/registry"
 	"errors"
 	"fmt"
 	"log"
@@ -22,9 +23,26 @@ const ReturnTypeOk = "ok"
 
 var mu sync.Mutex
 
-func GetAssetAttributes() (AssetAttributes, error) {
+type registryClient interface {
+	ReadKey(direction string) (string, error)
+	WriteCommand(command string, params ...string) error
+}
+
+type DdmRpc struct {
+	cfg      *config.Config
+	registry registryClient
+}
+
+func NewDdmRpc(cfg *config.Config) *DdmRpc {
+	return &DdmRpc{
+		cfg:      cfg,
+		registry: registry.NewRegistry(cfg),
+	}
+}
+
+func (d *DdmRpc) GetAssetAttributes() (AssetAttributes, error) {
 	var asset AssetAttributes
-	res, err := executeCommand("GetAssetAttributes", ReturnTypeString)
+	res, err := d.executeCommand("GetAssetAttributes", ReturnTypeString)
 	if err != nil {
 
 		return asset, err
@@ -42,8 +60,8 @@ func GetAssetAttributes() (AssetAttributes, error) {
 	return asset, nil
 }
 
-func GetFirmwareVersion() (string, error) {
-	res, err := executeCommand("GetFirmwareVersion", ReturnTypeString)
+func (d *DdmRpc) GetFirmwareVersion() (string, error) {
+	res, err := d.executeCommand("GetFirmwareVersion", ReturnTypeString)
 	if err != nil {
 
 		return "", err
@@ -52,8 +70,8 @@ func GetFirmwareVersion() (string, error) {
 	return res, nil
 }
 
-func GetMonitorActiveHours() (int, error) {
-	res, err := executeCommand("GetMonitorActiveHours", ReturnTypeInt)
+func (d *DdmRpc) GetMonitorActiveHours() (int, error) {
+	res, err := d.executeCommand("GetMonitorActiveHours", ReturnTypeInt)
 	if err != nil {
 
 		return -1, err
@@ -66,8 +84,8 @@ func GetMonitorActiveHours() (int, error) {
 	return int(hours64), nil
 }
 
-func GetBrightnessLevel() (int, error) {
-	res, err := executeCommand("GetBrightnessLevel", ReturnTypeInt)
+func (d *DdmRpc) GetBrightnessLevel() (int, error) {
+	res, err := d.executeCommand("GetBrightnessLevel", ReturnTypeInt)
 	if err != nil {
 
 		return -1, err
@@ -76,8 +94,8 @@ func GetBrightnessLevel() (int, error) {
 	return strconv.Atoi(res)
 }
 
-func SetBrightnessLevel(brightness int) error {
-	res, err := executeCommand("SetBrightnessLevel", ReturnTypeOk, strconv.Itoa(brightness))
+func (d *DdmRpc) SetBrightnessLevel(brightness int) error {
+	res, err := d.executeCommand("SetBrightnessLevel", ReturnTypeOk, strconv.Itoa(brightness))
 	if err != nil {
 
 		return err
@@ -90,8 +108,8 @@ func SetBrightnessLevel(brightness int) error {
 	return nil
 }
 
-func GetContrastLevel() (int, error) {
-	res, err := executeCommand("GetContrastLevel", ReturnTypeInt)
+func (d *DdmRpc) GetContrastLevel() (int, error) {
+	res, err := d.executeCommand("GetContrastLevel", ReturnTypeInt)
 	if err != nil {
 
 		return -1, err
@@ -100,8 +118,8 @@ func GetContrastLevel() (int, error) {
 	return strconv.Atoi(res)
 }
 
-func SetContrastLevel(contrast int) error {
-	res, err := executeCommand("SetContrastLevel", ReturnTypeOk, strconv.Itoa(contrast))
+func (d *DdmRpc) SetContrastLevel(contrast int) error {
+	res, err := d.executeCommand("SetContrastLevel", ReturnTypeOk, strconv.Itoa(contrast))
 	if err != nil {
 
 		return err
@@ -114,8 +132,8 @@ func SetContrastLevel(contrast int) error {
 	return nil
 }
 
-func GetPower() (string, error) {
-	res, err := executeCommand("GetControl", ReturnTypeString, "D6")
+func (d *DdmRpc) GetPower() (string, error) {
+	res, err := d.executeCommand("GetControl", ReturnTypeString, "D6")
 	if err != nil {
 
 		return "", err
@@ -132,7 +150,7 @@ func GetPower() (string, error) {
 	return "", errors.New(fmt.Sprintf("invalid GetPower response: %s", res))
 }
 
-func SetPower(value string) error {
+func (d *DdmRpc) SetPower(value string) error {
 	var arg string
 	if value == "ON" {
 		arg = "01"
@@ -141,7 +159,7 @@ func SetPower(value string) error {
 	} else {
 		return errors.New("invalid power value to set")
 	}
-	res, err := executeCommand("SetControl", ReturnTypeOk, "D6", arg)
+	res, err := d.executeCommand("SetControl", ReturnTypeOk, "D6", arg)
 	if err != nil {
 
 		return err
@@ -154,8 +172,8 @@ func SetPower(value string) error {
 	return nil
 }
 
-func Reset() error {
-	res, err := executeCommand("ForceReset", ReturnTypeOk)
+func (d *DdmRpc) Reset() error {
+	res, err := d.executeCommand("ForceReset", ReturnTypeOk)
 	if err != nil {
 
 		return err
@@ -168,11 +186,11 @@ func Reset() error {
 	return nil
 }
 
-func executeCommand(command string, returnType string, params ...string) (string, error) {
+func (d *DdmRpc) executeCommand(command string, returnType string, params ...string) (string, error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	err := registry.WriteCommand(command, params...)
+	err := d.registry.WriteCommand(command, params...)
 	if err != nil {
 		return "", errors.New(fmt.Sprintf("execute error: %s", err.Error()))
 	}
@@ -185,7 +203,7 @@ func executeCommand(command string, returnType string, params ...string) (string
 
 			return "", errors.New(fmt.Sprintf("attempt limit reached for %s", command))
 		}
-		res, err := registry.ReadKey(registry.DirectionOut)
+		res, err := d.registry.ReadKey(registry.DirectionOut)
 		if err != nil {
 
 			return "", errors.New(fmt.Sprintf("execute error: %s", err.Error()))
@@ -234,7 +252,7 @@ func executeCommand(command string, returnType string, params ...string) (string
 	}
 }
 
-func ExecuteRaw(cmd string) (string, error) {
+func (d *DdmRpc) ExecuteRaw(cmd string) (string, error) {
 
-	return executeCommand(cmd, ReturnTypeString)
+	return d.executeCommand(cmd, ReturnTypeString)
 }

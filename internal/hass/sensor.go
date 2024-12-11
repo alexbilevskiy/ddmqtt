@@ -1,14 +1,30 @@
 package hass
 
 import (
-	"ddmqtt/mqtt"
 	"encoding/json"
 	"log"
 	"strconv"
 )
 
-func (entity *Sensor) GetType() string {
-	return TypeSensor
+type Sensor struct {
+	Discovered     bool   `json:"-"`
+	Avaialable     bool   `json:"-"`
+	State          int    `json:"-"`
+	BaseTopic      string `json:"-"`
+	DiscoveryTopic string `json:"-"`
+	valueReader    func() (int, error)
+	mqtt           mqttClient
+	Name           string        `json:"name"`
+	Availability   SAvailability `json:"availability"`
+	StateTopic     string        `json:"state_topic"`
+	ObjectId       string        `json:"object_id"`
+	UniqueId       string        `json:"unique_id"`
+	Device         *Device       `json:"device"`
+	Icon           string        `json:"icon"`
+}
+
+func (entity *Sensor) SetMqtt(mqtt mqttClient) {
+	entity.mqtt = mqtt
 }
 
 func (entity *Sensor) SetValueReader(reader func() (int, error)) {
@@ -29,9 +45,9 @@ func (entity *Sensor) DoDiscovery() {
 	js, _ := json.Marshal(entity)
 	log.Printf("[%s] publishing discovery: %s", entity.ObjectId, string(js))
 
-	pubToken := mqtt.C.Publish(entity.DiscoveryTopic, 0, true, js)
-	if pubToken.Error() != nil {
-		log.Fatalf("[%s] failed to publish discovery: %s", entity.ObjectId, pubToken.Error())
+	err := entity.mqtt.Publish(entity.DiscoveryTopic, true, js)
+	if err != nil {
+		log.Printf("[%s] failed to publish discovery: %s", entity.ObjectId, err.Error())
 	}
 }
 
@@ -59,9 +75,9 @@ func (entity *Sensor) reportAvailability(available bool) {
 	}
 	log.Printf("[%s] publishing availability: %s", entity.ObjectId, availabilityStatus)
 
-	pubOnlineToken := mqtt.C.Publish(entity.Availability.Topic, 0, false, availabilityStatus)
-	if pubOnlineToken.Error() != nil {
-		log.Fatalf("[%s] failed to publish online state: %s", entity.ObjectId, pubOnlineToken.Error())
+	err := entity.mqtt.Publish(entity.Availability.Topic, false, availabilityStatus)
+	if err != nil {
+		log.Printf("[%s] failed to publish online state: %s", entity.ObjectId, err.Error())
 	}
 	entity.Avaialable = available
 }
@@ -72,9 +88,9 @@ func (entity *Sensor) publishState(state int) {
 	}
 	log.Printf("[%s] publishing state: %d", entity.ObjectId, state)
 
-	pubState := mqtt.C.Publish(entity.StateTopic, 0, false, strconv.Itoa(state))
-	if pubState.Error() != nil {
-		log.Fatalf("[%s] failed to publish state data: %s", entity.ObjectId, pubState.Error())
+	err := entity.mqtt.Publish(entity.StateTopic, false, strconv.Itoa(state))
+	if err != nil {
+		log.Printf("[%s] failed to publish state data: %s", entity.ObjectId, err.Error())
 	}
 	entity.State = state
 }

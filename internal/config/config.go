@@ -6,15 +6,17 @@ import (
 	"os"
 )
 
-var CFG Config
+func InitConfig(configFile string) *Config {
+	var cfg Config
 
-func InitConfig(configFile string) {
 	cfgRaw, err := os.ReadFile(configFile)
 	if err != nil {
 		log.Fatalf("cannot open config: %s", err.Error())
 	}
-	err = json.Unmarshal(cfgRaw, &CFG)
+	err = json.Unmarshal(cfgRaw, &cfg)
 	if err != nil {
 		log.Fatalf("cannot parse config file: %s", err.Error())
 	}
+
+	return &cfg
 }

@@ -1,7 +1,7 @@
 package registry
 
 import (
-	"ddmqtt/config"
+	"ddmqtt/internal/config"
 	"errors"
 	"fmt"
 	"golang.org/x/sys/windows/registry"
@@ -15,8 +15,16 @@ const BaseKey = `\Software\EnTech\RPC\`
 const DirectionIn = `In`
 const DirectionOut = `Out`
 
-func ReadKey(direction string) (string, error) {
-	k, err := registry.OpenKey(registry.USERS, config.CFG.RegUser+BaseKey+direction, registry.QUERY_VALUE)
+type Registry struct {
+	cfg *config.Config
+}
+
+func NewRegistry(cfg *config.Config) *Registry {
+	return &Registry{cfg: cfg}
+}
+
+func (r *Registry) ReadKey(direction string) (string, error) {
+	k, err := registry.OpenKey(registry.USERS, r.cfg.RegUser+BaseKey+direction, registry.QUERY_VALUE)
 	if err != nil {
 		if errors.Is(err, registry.ErrNotExist) {
 			return "", nil
@@ -36,8 +44,8 @@ func ReadKey(direction string) (string, error) {
 	return s, nil
 }
 
-func writeKey(direction string, value string) error {
-	kw, err := registry.OpenKey(registry.USERS, config.CFG.RegUser+BaseKey+direction, registry.SET_VALUE)
+func (r *Registry) writeKey(direction string, value string) error {
+	kw, err := registry.OpenKey(registry.USERS, r.cfg.RegUser+BaseKey+direction, registry.SET_VALUE)
 	if err != nil {
 
 		return errors.New(fmt.Sprintf("open write key error: %s", err.Error()))
@@ -51,8 +59,8 @@ func writeKey(direction string, value string) error {
 	return nil
 }
 
-func deleteKey(direction string) error {
-	kd, err := registry.OpenKey(registry.USERS, config.CFG.RegUser+BaseKey+direction, registry.SET_VALUE)
+func (r *Registry) deleteKey(direction string) error {
+	kd, err := registry.OpenKey(registry.USERS, r.cfg.RegUser+BaseKey+direction, registry.SET_VALUE)
 	if err != nil && !errors.Is(err, registry.ErrNotExist) {
 
 		return errors.New(fmt.Sprintf("open delete key error: %s", err.Error()))
@@ -68,16 +76,16 @@ func deleteKey(direction string) error {
 	return nil
 }
 
-func writeRandomI() error {
-	kwi, err := registry.OpenKey(registry.USERS, config.CFG.RegUser+BaseKey+DirectionIn, registry.SET_VALUE)
+func (r *Registry) writeRandomI() error {
+	kwi, err := registry.OpenKey(registry.USERS, r.cfg.RegUser+BaseKey+DirectionIn, registry.SET_VALUE)
 	if err != nil {
 
 		return errors.New(fmt.Sprintf("open write i key error: %s", err.Error()))
 	}
 	defer kwi.Close()
 
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	err = kwi.SetStringValue("Incoming", strconv.Itoa(r.Intn(50000)))
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	err = kwi.SetStringValue("Incoming", strconv.Itoa(rnd.Intn(50000)))
 	if err != nil {
 		return errors.New(fmt.Sprintf("write command i key error: %s", err.Error()))
 	}
@@ -85,16 +93,16 @@ func writeRandomI() error {
 	return nil
 }
 
-func WriteCommand(command string, params ...string) error {
-	err := deleteKey(DirectionOut)
+func (r *Registry) WriteCommand(command string, params ...string) error {
+	err := r.deleteKey(DirectionOut)
 	if err != nil {
 		return err
 	}
-	err = writeRandomI()
+	err = r.writeRandomI()
 	if err != nil {
 		return err
 	}
-	err = writeKey(DirectionIn, fmt.Sprintf("%s %s", command, strings.Join(params, " ")))
+	err = r.writeKey(DirectionIn, fmt.Sprintf("%s %s", command, strings.Join(params, " ")))
 	if err != nil {
 		return err
 	}
