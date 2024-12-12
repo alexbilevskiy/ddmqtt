@@ -5,12 +5,14 @@ package main
 import (
 	"ddmqtt/internal/config"
 	"ddmqtt/internal/ddmrpc"
+	"ddmqtt/internal/registry"
 	"log"
 )
 
 func main() {
 	cfg := config.InitConfig("config.json")
-	ddm := ddmrpc.NewDdmRpc(cfg)
+	registryClient := registry.NewRegistry(cfg)
+	ddm := ddmrpc.NewDdmRpc(registryClient)
 	res, err := ddm.ExecuteRaw("SetBrightnessLevel 20")
 	if err != nil {
 		log.Fatalf("error: %s", err)
