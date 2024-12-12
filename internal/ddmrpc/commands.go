@@ -1,7 +1,6 @@
 package ddmrpc
 
 import (
-	"ddmqtt/internal/config"
 	"ddmqtt/internal/registry"
 	"encoding/hex"
 	"errors"
@@ -31,14 +30,12 @@ type registryClient interface {
 }
 
 type DdmRpc struct {
-	cfg      *config.Config
 	registry registryClient
 }
 
-func NewDdmRpc(cfg *config.Config) *DdmRpc {
+func NewDdmRpc(registry registryClient) *DdmRpc {
 	return &DdmRpc{
-		cfg:      cfg,
-		registry: registry.NewRegistry(cfg),
+		registry: registry,
 	}
 }
 
