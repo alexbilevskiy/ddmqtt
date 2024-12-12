@@ -1,7 +1,6 @@
 package ddmrpc
 
 import (
-	"ddmqtt/internal/registry"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"ddmqtt/internal/registry"
 )
 
 const ResponseOk = "Ok"

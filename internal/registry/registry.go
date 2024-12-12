@@ -1,14 +1,15 @@
 package registry
 
 import (
-	"ddmqtt/internal/config"
 	"errors"
 	"fmt"
-	"golang.org/x/sys/windows/registry"
 	"math/rand"
 	"strconv"
 	"strings"
 	"time"
+
+	"ddmqtt/internal/config"
+	"golang.org/x/sys/windows/registry"
 )
 
 const BaseKey = `\Software\EnTech\RPC\`

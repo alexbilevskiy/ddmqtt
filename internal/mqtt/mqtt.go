@@ -1,12 +1,13 @@
 package mqtt
 
 import (
-	"ddmqtt/internal/config"
 	"fmt"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"log"
 	"os"
 	"time"
+
+	"ddmqtt/internal/config"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 type Client struct {
