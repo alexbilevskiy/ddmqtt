@@ -8,6 +8,11 @@
 - reset
 - input selection
 
+### Multiple monitors (beta)
+Multiple monitors are supported, but not without issues
+- No hot reload (need to restart service after connecting/disconnecting monitor)
+- No cleanup of old devices (mqtt topics probably would be deleted by broker, but disconnected monitor will be visible in HA)
+
 ### TODO
 - presets (as in DDM ui)
 
