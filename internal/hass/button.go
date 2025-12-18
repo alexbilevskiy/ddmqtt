@@ -10,7 +10,7 @@ type Button struct {
 	Avaialable     bool   `json:"-"`
 	BaseTopic      string `json:"-"`
 	DiscoveryTopic string `json:"-"`
-	valueSetter    func() error
+	valueSetter    ButtonSetter
 	mqtt           mqttClient
 	Name           string        `json:"name"`
 	Availability   SAvailability `json:"availability"`
@@ -25,7 +25,7 @@ func (entity *Button) SetMqtt(mqtt mqttClient) {
 	entity.mqtt = mqtt
 }
 
-func (entity *Button) SetValueSetter(setter func() error) {
+func (entity *Button) SetValueSetter(setter ButtonSetter) {
 	entity.valueSetter = setter
 }
 
@@ -77,7 +77,7 @@ func (entity *Button) reportAvailability(available bool) {
 }
 
 func (entity *Button) SetValue() error {
-	err := entity.valueSetter()
+	err := entity.valueSetter(entity.Device.Identifiers)
 	if err != nil {
 
 		return err

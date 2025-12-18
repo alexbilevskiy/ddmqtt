@@ -23,26 +23,40 @@ const ReturnTypeInt = "int"
 const ReturnTypeString = "string"
 const ReturnTypeOk = "ok"
 
-var mu sync.Mutex
-
 type registryClient interface {
 	ReadKey(direction string) (string, error)
 	WriteCommand(command string, params ...string) error
 }
 
 type DdmRpc struct {
+	mu       sync.Mutex
 	registry registryClient
 }
 
 func NewDdmRpc(registry registryClient) *DdmRpc {
 	return &DdmRpc{
+		mu:       sync.Mutex{},
 		registry: registry,
 	}
 }
 
-func (d *DdmRpc) GetAssetAttributes() (AssetAttributes, error) {
+func (d *DdmRpc) CountMonitors() (int, error) {
+	res, err := d.executeCommand("CountMonitors", ReturnTypeInt)
+	if err != nil {
+
+		return -1, err
+	}
+	countMonitors, err := strconv.ParseInt(res, 10, 32)
+	if err != nil {
+		return -1, err
+	}
+
+	return int(countMonitors), nil
+}
+
+func (d *DdmRpc) GetAssetAttributes(monitorId int) (AssetAttributes, error) {
 	var asset AssetAttributes
-	res, err := d.executeCommand("GetAssetAttributes", ReturnTypeString)
+	res, err := d.executeCommand(fmt.Sprintf("%d:GetAssetAttributes", monitorId), ReturnTypeString)
 	if err != nil {
 
 		return asset, err
@@ -63,17 +77,17 @@ func (d *DdmRpc) GetAssetAttributes() (AssetAttributes, error) {
 	return asset, nil
 }
 
-func (d *DdmRpc) GetCapabilities() (Capabilities, error) {
+func (d *DdmRpc) GetCapabilities(serviceTag string) (Capabilities, error) {
 	var caps Capabilities
-	res, err := d.executeCommand("GetCapabilities", ReturnTypeString)
+	res, err := d.executeCommand(fmt.Sprintf("%s:GetCapabilities", serviceTag), ReturnTypeString)
 	if err != nil {
 
 		return caps, err
 	}
-	re := regexp.MustCompile(`60\(((?:[0-9a-f]{2} )+)\)`)
+	re := regexp.MustCompile(CapabilitiesRegex)
 	matches := re.FindAllStringSubmatch(res, -1)
 	if len(matches) == 0 || len(matches[0]) == 0 {
-		return caps, errors.New("invalid GetCapabilities response")
+		return caps, fmt.Errorf("invalid GetCapabilities response: %s", res)
 	}
 	for _, input := range strings.Split(strings.Trim(matches[0][1], " "), " ") {
 		in, err := hex.DecodeString(input)
@@ -87,8 +101,8 @@ func (d *DdmRpc) GetCapabilities() (Capabilities, error) {
 	return caps, nil
 }
 
-func (d *DdmRpc) GetFirmwareVersion() (string, error) {
-	res, err := d.executeCommand("GetFirmwareVersion", ReturnTypeString)
+func (d *DdmRpc) GetFirmwareVersion(serviceTag string) (string, error) {
+	res, err := d.executeCommand(fmt.Sprintf("%s:GetFirmwareVersion", serviceTag), ReturnTypeString)
 	if err != nil {
 
 		return "", err
@@ -97,8 +111,8 @@ func (d *DdmRpc) GetFirmwareVersion() (string, error) {
 	return res, nil
 }
 
-func (d *DdmRpc) GetMonitorActiveHours() (int, error) {
-	res, err := d.executeCommand("GetMonitorActiveHours", ReturnTypeInt)
+func (d *DdmRpc) GetMonitorActiveHours(serviceTag string) (int, error) {
+	res, err := d.executeCommand(fmt.Sprintf("%s:GetMonitorActiveHours", serviceTag), ReturnTypeInt)
 	if err != nil {
 
 		return -1, err
@@ -111,8 +125,8 @@ func (d *DdmRpc) GetMonitorActiveHours() (int, error) {
 	return int(hours64), nil
 }
 
-func (d *DdmRpc) GetBrightnessLevel() (int, error) {
-	res, err := d.executeCommand("GetBrightnessLevel", ReturnTypeInt)
+func (d *DdmRpc) GetBrightnessLevel(serviceTag string) (int, error) {
+	res, err := d.executeCommand(fmt.Sprintf("%s:GetBrightnessLevel", serviceTag), ReturnTypeInt)
 	if err != nil {
 
 		return -1, err
@@ -121,8 +135,8 @@ func (d *DdmRpc) GetBrightnessLevel() (int, error) {
 	return strconv.Atoi(res)
 }
 
-func (d *DdmRpc) SetBrightnessLevel(brightness int) error {
-	res, err := d.executeCommand("SetBrightnessLevel", ReturnTypeOk, strconv.Itoa(brightness))
+func (d *DdmRpc) SetBrightnessLevel(serviceTag string, brightness int) error {
+	res, err := d.executeCommand(fmt.Sprintf("%s:SetBrightnessLevel", serviceTag), ReturnTypeOk, strconv.Itoa(brightness))
 	if err != nil {
 
 		return err
@@ -135,8 +149,8 @@ func (d *DdmRpc) SetBrightnessLevel(brightness int) error {
 	return nil
 }
 
-func (d *DdmRpc) GetContrastLevel() (int, error) {
-	res, err := d.executeCommand("GetContrastLevel", ReturnTypeInt)
+func (d *DdmRpc) GetContrastLevel(serviceTag string) (int, error) {
+	res, err := d.executeCommand(fmt.Sprintf("%s:GetContrastLevel", serviceTag), ReturnTypeInt)
 	if err != nil {
 
 		return -1, err
@@ -145,8 +159,8 @@ func (d *DdmRpc) GetContrastLevel() (int, error) {
 	return strconv.Atoi(res)
 }
 
-func (d *DdmRpc) SetContrastLevel(contrast int) error {
-	res, err := d.executeCommand("SetContrastLevel", ReturnTypeOk, strconv.Itoa(contrast))
+func (d *DdmRpc) SetContrastLevel(serviceTag string, contrast int) error {
+	res, err := d.executeCommand(fmt.Sprintf("%s:SetContrastLevel", serviceTag), ReturnTypeOk, strconv.Itoa(contrast))
 	if err != nil {
 
 		return err
@@ -159,8 +173,8 @@ func (d *DdmRpc) SetContrastLevel(contrast int) error {
 	return nil
 }
 
-func (d *DdmRpc) GetPower() (string, error) {
-	res, err := d.executeCommand("GetControl", ReturnTypeString, "D6")
+func (d *DdmRpc) GetPower(serviceTag string) (string, error) {
+	res, err := d.executeCommand(fmt.Sprintf("%s:GetControl", serviceTag), ReturnTypeString, "D6")
 	if err != nil {
 
 		return "", err
@@ -177,7 +191,7 @@ func (d *DdmRpc) GetPower() (string, error) {
 	return "", errors.New(fmt.Sprintf("invalid GetPower response: %s", res))
 }
 
-func (d *DdmRpc) SetPower(value string) error {
+func (d *DdmRpc) SetPower(serviceTag string, value string) error {
 	var arg string
 	if value == "ON" {
 		arg = "01"
@@ -186,7 +200,7 @@ func (d *DdmRpc) SetPower(value string) error {
 	} else {
 		return errors.New("invalid power value to set")
 	}
-	res, err := d.executeCommand("SetControl", ReturnTypeOk, "D6", arg)
+	res, err := d.executeCommand(fmt.Sprintf("%s:SetControl", serviceTag), ReturnTypeOk, "D6", arg)
 	if err != nil {
 
 		return err
@@ -199,8 +213,8 @@ func (d *DdmRpc) SetPower(value string) error {
 	return nil
 }
 
-func (d *DdmRpc) GetActiveInput() (byte, error) {
-	res, err := d.executeCommand("GetControl 60", ReturnTypeString)
+func (d *DdmRpc) GetActiveInput(serviceTag string) (byte, error) {
+	res, err := d.executeCommand(fmt.Sprintf("%s:GetControl 60", serviceTag), ReturnTypeString)
 	if err != nil {
 
 		return 0, err
@@ -217,8 +231,8 @@ func (d *DdmRpc) GetActiveInput() (byte, error) {
 	return in[1], nil
 }
 
-func (d *DdmRpc) SetActiveInput(input byte) error {
-	res, err := d.executeCommand("SetActiveInput", ReturnTypeOk, fmt.Sprintf("%02x", input))
+func (d *DdmRpc) SetActiveInput(serviceTag string, input byte) error {
+	res, err := d.executeCommand(fmt.Sprintf("%s:SetActiveInput", serviceTag), ReturnTypeOk, fmt.Sprintf("%02x", input))
 	if err != nil {
 
 		return err
@@ -231,8 +245,8 @@ func (d *DdmRpc) SetActiveInput(input byte) error {
 	return nil
 }
 
-func (d *DdmRpc) Reset() error {
-	res, err := d.executeCommand("ForceReset", ReturnTypeOk)
+func (d *DdmRpc) Reset(serviceTag string) error {
+	res, err := d.executeCommand(fmt.Sprintf("%s:ForceReset", serviceTag), ReturnTypeOk)
 	if err != nil {
 
 		return err
@@ -246,8 +260,8 @@ func (d *DdmRpc) Reset() error {
 }
 
 func (d *DdmRpc) executeCommand(command string, returnType string, params ...string) (string, error) {
-	mu.Lock()
-	defer mu.Unlock()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
 	err := d.registry.WriteCommand(command, params...)
 	if err != nil {

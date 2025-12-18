@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -11,21 +12,6 @@ import (
 	"ddmqtt/internal/mqtt"
 )
 
-type DDMRPCClient interface {
-	GetAssetAttributes() (ddmrpc.AssetAttributes, error)
-	GetCapabilities() (ddmrpc.Capabilities, error)
-	GetFirmwareVersion() (string, error)
-	GetMonitorActiveHours() (int, error)
-	GetBrightnessLevel() (int, error)
-	SetBrightnessLevel(brightness int) error
-	GetContrastLevel() (int, error)
-	SetContrastLevel(contrast int) error
-	GetPower() (string, error)
-	SetPower(value string) error
-	GetActiveInput() (byte, error)
-	SetActiveInput(input byte) error
-	Reset() error
-}
 type Monitor struct {
 	cfg          *config.Config
 	ddmrpc       DDMRPCClient
@@ -34,22 +20,17 @@ type Monitor struct {
 	capabilities ddmrpc.Capabilities
 }
 
-func NewMonitor(cfg *config.Config, ddmrpc DDMRPCClient, mqtt *mqtt.Client) Monitor {
+func newMonitor(cfg *config.Config, ddmrpc DDMRPCClient, mqtt *mqtt.Client, attrs *ddmrpc.AssetAttributes) *Monitor {
 	var device hass.Device
 
-	attrs, err := ddmrpc.GetAssetAttributes()
-	if err != nil {
-		log.Fatalf("failed to read monitor: %s", err.Error())
-	}
-	fw, err := ddmrpc.GetFirmwareVersion()
+	fw, err := ddmrpc.GetFirmwareVersion(attrs.ServiceTag)
 	if err != nil {
 		log.Fatalf("failed to read monitor fw: %s", err.Error())
 	}
-	caps, err := ddmrpc.GetCapabilities()
+	caps, err := ddmrpc.GetCapabilities(attrs.ServiceTag)
 	if err != nil {
 		log.Fatalf("failed to read monitor caps: %s", err.Error())
 	}
-	log.Printf("found monitor: %v", attrs)
 	device = hass.Device{
 		Identifiers:  attrs.ServiceTag,
 		Manufacturer: "Dell",
@@ -58,7 +39,7 @@ func NewMonitor(cfg *config.Config, ddmrpc DDMRPCClient, mqtt *mqtt.Client) Moni
 		SwVersion:    fw,
 	}
 
-	return Monitor{
+	return &Monitor{
 		cfg:          cfg,
 		ddmrpc:       ddmrpc,
 		mqtt:         mqtt,
@@ -75,7 +56,7 @@ func (m *Monitor) CreateSensorActiveHours() hass.Sensor {
 		Name:           "Active hours",
 		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
 		DiscoveryTopic: fmt.Sprintf("%s/sensor/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
-		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/%s/available", m.cfg.MqttRootTopic, m.device.Identifiers)},
+		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)},
 		ObjectId:       objectId,
 		UniqueId:       objectId,
 		Device:         m.device,
@@ -97,7 +78,7 @@ func (m *Monitor) CreateNumberBrightness() hass.Number {
 		Name:           "Brightness",
 		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
 		DiscoveryTopic: fmt.Sprintf("%s/number/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
-		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/%s/available", m.cfg.MqttRootTopic, m.device.Identifiers)},
+		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)},
 		CommandTopic:   fmt.Sprintf("%s/set", baseTopic),
 		ObjectId:       objectId,
 		UniqueId:       objectId,
@@ -126,7 +107,7 @@ func (m *Monitor) CreateNumberContrast() hass.Number {
 		Name:           "Contrast",
 		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
 		DiscoveryTopic: fmt.Sprintf("%s/number/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
-		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/%s/available", m.cfg.MqttRootTopic, m.device.Identifiers)},
+		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)},
 		CommandTopic:   fmt.Sprintf("%s/set", baseTopic),
 		ObjectId:       objectId,
 		UniqueId:       objectId,
@@ -156,7 +137,7 @@ func (m *Monitor) CreateSelectPresets() hass.Select {
 		State:          "",
 		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
 		DiscoveryTopic: fmt.Sprintf("%s/select/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
-		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/%s/available", m.cfg.MqttRootTopic, m.device.Identifiers)},
+		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)},
 		CommandTopic:   fmt.Sprintf("%s/set", baseTopic),
 		ObjectId:       objectId,
 		UniqueId:       objectId,
@@ -182,11 +163,11 @@ func (m *Monitor) CreateSelectPresets() hass.Select {
 				continue
 			}
 			found = true
-			err = m.ddmrpc.SetBrightnessLevel(option.Brightness)
+			err = m.ddmrpc.SetBrightnessLevel(m.device.Identifiers, option.Brightness)
 			if err != nil {
 				return err
 			}
-			err = m.ddmrpc.SetContrastLevel(option.Contrast)
+			err = m.ddmrpc.SetContrastLevel(m.device.Identifiers, option.Contrast)
 			if err != nil {
 				return err
 			}
@@ -212,7 +193,7 @@ func (m *Monitor) CreateSelectInput() hass.Select {
 		State:          "",
 		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
 		DiscoveryTopic: fmt.Sprintf("%s/select/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
-		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/%s/available", m.cfg.MqttRootTopic, m.device.Identifiers)},
+		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)},
 		CommandTopic:   fmt.Sprintf("%s/set", baseTopic),
 		ObjectId:       objectId,
 		UniqueId:       objectId,
@@ -230,7 +211,7 @@ func (m *Monitor) CreateSelectInput() hass.Select {
 
 	selector.SetMqtt(m.mqtt)
 	selector.SetValueReader(func() (string, error) {
-		input, err := m.ddmrpc.GetActiveInput()
+		input, err := m.ddmrpc.GetActiveInput(m.device.Identifiers)
 		if err != nil {
 			return "", err
 		}
@@ -250,7 +231,7 @@ func (m *Monitor) CreateSelectInput() hass.Select {
 				continue
 			}
 			found = true
-			err = m.ddmrpc.SetActiveInput(input)
+			err = m.ddmrpc.SetActiveInput(m.device.Identifiers, input)
 			if err != nil {
 				return err
 			}
@@ -275,7 +256,7 @@ func (m *Monitor) CreateSwitchPower() hass.Switch {
 		Name:           "Power",
 		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
 		DiscoveryTopic: fmt.Sprintf("%s/switch/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
-		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/%s/available", m.cfg.MqttRootTopic, m.device.Identifiers)},
+		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)},
 		CommandTopic:   fmt.Sprintf("%s/set", baseTopic),
 		ObjectId:       objectId,
 		UniqueId:       objectId,
@@ -298,7 +279,7 @@ func (m *Monitor) CreateButtonReset() hass.Button {
 		BaseTopic:      baseTopic,
 		Name:           "Reset",
 		DiscoveryTopic: fmt.Sprintf("%s/button/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
-		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/%s/available", m.cfg.MqttRootTopic, m.device.Identifiers)},
+		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)},
 		CommandTopic:   fmt.Sprintf("%s/press", baseTopic),
 		ObjectId:       objectId,
 		UniqueId:       objectId,
@@ -312,10 +293,8 @@ func (m *Monitor) CreateButtonReset() hass.Button {
 	return reset
 }
 
-func (m *Monitor) StartReporting() {
+func (m *Monitor) StartReporting(ctx context.Context) {
 	var err error
-
-	m.mqtt.Connect(m.device.Identifiers)
 
 	ah := m.CreateSensorActiveHours()
 	ah.Init()
@@ -357,7 +336,20 @@ func (m *Monitor) StartReporting() {
 		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
 	}
 
+	t := time.NewTicker(15 * time.Second)
+	defer t.Stop()
+
+	firstRun := make(chan struct{}, 1)
+	firstRun <- struct{}{}
 	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		case <-firstRun:
+			firstRun = nil
+		}
+
 		var err error
 		err = ah.ReportValue()
 		if err != nil {
@@ -391,7 +383,5 @@ func (m *Monitor) StartReporting() {
 		if err != nil {
 			log.Printf("[%s] failed to report state", cn.ObjectId)
 		}
-
-		time.Sleep(15 * time.Second)
 	}
 }

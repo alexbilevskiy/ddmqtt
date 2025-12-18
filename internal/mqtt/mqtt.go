@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"ddmqtt/internal/config"
+
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
@@ -25,7 +26,7 @@ func NewClient(cfg *config.Config) *Client {
 	}
 }
 
-func (m *Client) Connect(monitorIdentifiers string) error {
+func (m *Client) Connect() error {
 	opts := mqtt.NewClientOptions().AddBroker(m.cfg.BrokerAddr).SetClientID(m.cfg.MqttClientId)
 	opts.SetKeepAlive(5 * time.Second)
 	opts.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
@@ -33,7 +34,7 @@ func (m *Client) Connect(monitorIdentifiers string) error {
 	})
 	opts.SetPingTimeout(3 * time.Second)
 	opts.WillEnabled = true
-	opts.WillTopic = fmt.Sprintf("%s/%s/available", m.cfg.MqttRootTopic, monitorIdentifiers)
+	opts.WillTopic = fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)
 	opts.WillPayload = []byte("offline")
 	opts.WillRetained = true
 	opts.SetOnConnectHandler(func(client mqtt.Client) {

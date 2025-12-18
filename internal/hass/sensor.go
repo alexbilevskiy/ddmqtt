@@ -12,7 +12,7 @@ type Sensor struct {
 	State          int    `json:"-"`
 	BaseTopic      string `json:"-"`
 	DiscoveryTopic string `json:"-"`
-	valueReader    func() (int, error)
+	valueReader    SensorReader
 	mqtt           mqttClient
 	Name           string        `json:"name"`
 	Availability   SAvailability `json:"availability"`
@@ -27,7 +27,7 @@ func (entity *Sensor) SetMqtt(mqtt mqttClient) {
 	entity.mqtt = mqtt
 }
 
-func (entity *Sensor) SetValueReader(reader func() (int, error)) {
+func (entity *Sensor) SetValueReader(reader func(identifier string) (int, error)) {
 	entity.valueReader = reader
 }
 
@@ -52,7 +52,7 @@ func (entity *Sensor) DoDiscovery() {
 }
 
 func (entity *Sensor) ReportValue() error {
-	value, err := entity.valueReader()
+	value, err := entity.valueReader(entity.Device.Identifiers)
 	if err != nil {
 		log.Printf("[%s] cannot read value: %s", entity.ObjectId, err.Error())
 		entity.reportAvailability(false)

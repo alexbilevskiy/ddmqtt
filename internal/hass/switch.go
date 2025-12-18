@@ -11,8 +11,8 @@ type Switch struct {
 	State          string `json:"-"`
 	BaseTopic      string `json:"-"`
 	DiscoveryTopic string `json:"-"`
-	valueReader    func() (string, error)
-	valueSetter    func(value string) error
+	valueReader    SwitchReader
+	valueSetter    SwitchSetter
 	mqtt           mqttClient
 	Name           string        `json:"name"`
 	Availability   SAvailability `json:"availability"`
@@ -28,11 +28,11 @@ func (entity *Switch) SetMqtt(mqtt mqttClient) {
 	entity.mqtt = mqtt
 }
 
-func (entity *Switch) SetValueReader(reader func() (string, error)) {
+func (entity *Switch) SetValueReader(reader SwitchReader) {
 	entity.valueReader = reader
 }
 
-func (entity *Switch) SetValueSetter(setter func(value string) error) {
+func (entity *Switch) SetValueSetter(setter SwitchSetter) {
 	entity.valueSetter = setter
 }
 
@@ -61,7 +61,7 @@ func (entity *Switch) DoDiscovery() {
 }
 
 func (entity *Switch) ReportValue() error {
-	value, err := entity.valueReader()
+	value, err := entity.valueReader(entity.Device.Identifiers)
 	if err != nil {
 		log.Printf("[%s] cannot read value: %s", entity.ObjectId, err.Error())
 		entity.reportAvailability(false)
@@ -106,7 +106,7 @@ func (entity *Switch) publishState(state string) {
 
 func (entity *Switch) SetValue(value string) error {
 
-	return entity.valueSetter(value)
+	return entity.valueSetter(entity.Device.Identifiers, value)
 }
 
 func (entity *Switch) subscribeMqtt() error {
