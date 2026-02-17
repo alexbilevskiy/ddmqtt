@@ -6,22 +6,23 @@ import (
 )
 
 type Switch struct {
-	Discovered     bool   `json:"-"`
-	Avaialable     bool   `json:"-"`
-	State          string `json:"-"`
-	BaseTopic      string `json:"-"`
-	DiscoveryTopic string `json:"-"`
-	valueReader    SwitchReader
-	valueSetter    SwitchSetter
-	mqtt           mqttClient
-	Name           string        `json:"name"`
-	Availability   SAvailability `json:"availability"`
-	StateTopic     string        `json:"state_topic"`
-	CommandTopic   string        `json:"command_topic"`
-	ObjectId       string        `json:"object_id"`
-	UniqueId       string        `json:"unique_id"`
-	Device         *Device       `json:"device"`
-	Icon           string        `json:"icon"`
+	Discovered       bool   `json:"-"`
+	Avaialable       bool   `json:"-"`
+	State            string `json:"-"`
+	BaseTopic        string `json:"-"`
+	DiscoveryTopic   string `json:"-"`
+	valueReader      SwitchReader
+	valueSetter      SwitchSetter
+	mqtt             mqttClient
+	Name             string          `json:"name"`
+	Availability     []SAvailability `json:"availability"`
+	AvailabilityMode string          `json:"availability_mode"`
+	StateTopic       string          `json:"state_topic"`
+	CommandTopic     string          `json:"command_topic"`
+	ObjectId         string          `json:"object_id"`
+	UniqueId         string          `json:"unique_id"`
+	Device           *Device         `json:"device"`
+	Icon             string          `json:"icon"`
 }
 
 func (entity *Switch) SetMqtt(mqtt mqttClient) {
@@ -64,31 +65,12 @@ func (entity *Switch) ReportValue() error {
 	value, err := entity.valueReader(entity.Device.Identifiers)
 	if err != nil {
 		log.Printf("[%s] cannot read value: %s", entity.ObjectId, err.Error())
-		entity.reportAvailability(false)
 
 		return err
 	}
-	entity.reportAvailability(true)
 	entity.publishState(value)
 
 	return nil
-}
-
-func (entity *Switch) reportAvailability(available bool) {
-	if entity.Avaialable == available {
-		return
-	}
-	availabilityStatus := "offline"
-	if available {
-		availabilityStatus = "online"
-	}
-	log.Printf("[%s] publishing availability: %s", entity.ObjectId, availabilityStatus)
-
-	err := entity.mqtt.Publish(entity.Availability.Topic, false, availabilityStatus)
-	if err != nil {
-		log.Printf("[%s] failed to publish online state: %s", entity.ObjectId, err.Error())
-	}
-	entity.Avaialable = available
 }
 
 func (entity *Switch) publishState(state string) {

@@ -34,14 +34,12 @@ func (m *Client) Connect() error {
 	})
 	opts.SetPingTimeout(3 * time.Second)
 	opts.WillEnabled = true
-	opts.WillTopic = fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)
+	opts.WillTopic = m.GetGlobalAvailabilityTopic()
 	opts.WillPayload = []byte("offline")
 	opts.WillRetained = true
 	opts.SetOnConnectHandler(func(client mqtt.Client) {
 		log.Printf("MQTT connected!")
-		if len(m.listeners) > 0 {
-			m.client.Publish(opts.WillTopic, 0, true, "online")
-		}
+		m.client.Publish(opts.WillTopic, 0, true, "online")
 		for topic, listener := range m.listeners {
 			if token := m.client.Subscribe(topic, 0, listener); token.Wait() && token.Error() != nil {
 
@@ -77,4 +75,8 @@ func (m *Client) Publish(topic string, retain bool, value interface{}) error {
 		return fmt.Errorf("failed to publish to %s: %s", topic, token.Error())
 	}
 	return nil
+}
+
+func (m *Client) GetGlobalAvailabilityTopic() string {
+	return fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)
 }

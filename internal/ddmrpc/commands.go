@@ -19,6 +19,7 @@ const (
 	ResponseInvalidCommand = "Invalid command"
 	ResponseEmpty          = ""
 	ResponseWait           = "..."
+	ResponseError          = "Error"
 )
 
 const (
@@ -67,6 +68,28 @@ func (d *DdmRpc) CountMonitors() (int, error) {
 func (d *DdmRpc) GetAssetAttributes(monitorId int) (AssetAttributes, error) {
 	var asset AssetAttributes
 	res, err := d.executeCommand(fmt.Sprintf("%d:GetAssetAttributes", monitorId), ReturnTypeString)
+	if err != nil {
+
+		return asset, fmt.Errorf("GetAssetAttributes: %w", err)
+	}
+	parts := strings.Split(res, ",")
+	if parts[0] == "" {
+		return asset, fmt.Errorf("GetAssetAttributes: %w", ErrInvalidResponse)
+	}
+	asset = AssetAttributes{
+		ModelCode:    parts[0],
+		Model:        parts[1],
+		ServiceTag:   parts[2],
+		Manufactured: parts[3],
+	}
+	hours, _ := strconv.ParseInt(parts[4], 10, 64)
+	asset.ActiveHours = hours
+
+	return asset, nil
+}
+func (d *DdmRpc) GetAssetAttributesByTag(serviceTag string) (AssetAttributes, error) {
+	var asset AssetAttributes
+	res, err := d.executeCommand(fmt.Sprintf("%s:GetAssetAttributes", serviceTag), ReturnTypeString)
 	if err != nil {
 
 		return asset, fmt.Errorf("GetAssetAttributes: %w", err)
@@ -201,6 +224,10 @@ func (d *DdmRpc) GetPower(serviceTag string) (string, error) {
 
 		return "OFF", nil
 	}
+	if res == "FFFF" {
+
+		return "POWER_OFF", nil
+	}
 
 	return "", fmt.Errorf("GetPower: %w (%s)", ErrInvalidResponse, res)
 }
@@ -281,6 +308,7 @@ func (d *DdmRpc) executeCommand(command string, returnType string, params ...str
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrExecuteError, err)
 	}
+	time.Sleep(200 * time.Millisecond)
 
 	att := 0
 	for {
@@ -296,31 +324,28 @@ func (d *DdmRpc) executeCommand(command string, returnType string, params ...str
 			return "", fmt.Errorf("%w: %w", ErrExecuteError, err)
 		}
 		if res == ResponseEmpty {
-			if att > 3 {
-				log.Printf("[%s] empty response, retrying (%d)", command, att)
-			}
+			log.Printf("[%s] received empty response, retrying read (att: %d)", command, att)
 			time.Sleep(200 * time.Millisecond)
 			continue
 		}
 		if res == ResponseWait {
-			if att > 3 {
-				log.Printf("[%s] waiting for response, retrying (%d)", command, att)
-			}
-			time.Sleep(100 * time.Millisecond)
+			log.Printf("[%s] response not ready, retrying read (att: %d)", command, att)
+			time.Sleep(200 * time.Millisecond)
 			continue
 		}
 		if res == ResponseInvalidCommand {
 
 			return "", fmt.Errorf("%w: invalid command", ErrExecuteError)
 		}
+		if res == ResponseError {
+			return "", fmt.Errorf("%w: error in response", ErrExecuteError)
+		}
 		switch returnType {
 		case ReturnTypeString:
 		case ReturnTypeInt:
 			_, err = strconv.Atoi(res)
 			if err != nil {
-				if att > 3 {
-					log.Printf("[%s] not int response, retrying (%d) `%s`: %s", command, att, res, err.Error())
-				}
+				log.Printf("[%s] received not int response, retrying (att: %d) `%s`: %s", command, att, res, err.Error())
 				time.Sleep(200 * time.Millisecond)
 				goto LOOP
 			}
@@ -328,7 +353,7 @@ func (d *DdmRpc) executeCommand(command string, returnType string, params ...str
 			{
 				if res != ResponseOk {
 					if att > 3 {
-						log.Printf("[%s] not ok response, retrying (%d): %s", command, att, res)
+						log.Printf("[%s] received not ok response, retrying (att: %d): %s", command, att, res)
 					}
 					time.Sleep(200 * time.Millisecond)
 					goto LOOP

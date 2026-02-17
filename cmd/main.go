@@ -38,16 +38,8 @@ func main() {
 	}
 
 	con := monitor.NewController(cfg, ddmRpcClient, mqttClient)
-	monitors, err := con.PopulateMonitors()
-	if err != nil {
-		log.Fatalf("populate monitors: %s", err)
-	}
-	for _, mon := range monitors {
-		go mon.StartReporting(ctx)
-	}
-
-	select {
-	case <-ctx.Done():
-		return
+	errMonitors := con.StartReporting(ctx)
+	if errMonitors != nil {
+		log.Fatalf("monitors controller: %s", errMonitors)
 	}
 }

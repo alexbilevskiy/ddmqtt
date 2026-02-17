@@ -13,11 +13,13 @@ import (
 )
 
 type Monitor struct {
-	cfg          *config.Config
-	ddmrpc       DDMRPCClient
-	mqtt         *mqtt.Client
-	device       *hass.Device
-	capabilities ddmrpc.Capabilities
+	cfg               *config.Config
+	ddmrpc            DDMRPCClient
+	mqtt              *mqtt.Client
+	device            *hass.Device
+	capabilities      ddmrpc.Capabilities
+	available         bool
+	availabilityTopic string
 }
 
 func newMonitor(cfg *config.Config, ddmrpc DDMRPCClient, mqtt *mqtt.Client, attrs *ddmrpc.AssetAttributes) *Monitor {
@@ -40,111 +42,116 @@ func newMonitor(cfg *config.Config, ddmrpc DDMRPCClient, mqtt *mqtt.Client, attr
 	}
 
 	return &Monitor{
-		cfg:          cfg,
-		ddmrpc:       ddmrpc,
-		mqtt:         mqtt,
-		device:       &device,
-		capabilities: caps,
+		cfg:               cfg,
+		ddmrpc:            ddmrpc,
+		mqtt:              mqtt,
+		device:            &device,
+		capabilities:      caps,
+		availabilityTopic: fmt.Sprintf("%s/%s_available", cfg.MqttRootTopic, device.Identifiers),
 	}
 }
 
-func (m *Monitor) CreateSensorActiveHours() hass.Sensor {
+func (m *Monitor) CreateSensorActiveHours() *hass.Sensor {
 	objectId := fmt.Sprintf("%s_active_hours", m.device.Identifiers)
 	baseTopic := fmt.Sprintf("%s/%s", m.cfg.MqttRootTopic, objectId)
 	hours := hass.Sensor{
-		BaseTopic:      baseTopic,
-		Name:           "Active hours",
-		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
-		DiscoveryTopic: fmt.Sprintf("%s/sensor/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
-		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)},
-		ObjectId:       objectId,
-		UniqueId:       objectId,
-		Device:         m.device,
-		Icon:           "mdi:clock-outline",
+		BaseTopic:        baseTopic,
+		Name:             "Active hours",
+		StateTopic:       fmt.Sprintf("%s/state", baseTopic),
+		DiscoveryTopic:   fmt.Sprintf("%s/sensor/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
+		Availability:     []hass.SAvailability{{Topic: m.availabilityTopic}, {Topic: m.mqtt.GetGlobalAvailabilityTopic()}},
+		AvailabilityMode: "all",
+		ObjectId:         objectId,
+		UniqueId:         objectId,
+		Device:           m.device,
+		Icon:             "mdi:clock-outline",
 	}
 
 	hours.SetMqtt(m.mqtt)
 	hours.SetValueReader(m.ddmrpc.GetMonitorActiveHours)
 
-	return hours
+	return &hours
 }
 
-func (m *Monitor) CreateNumberBrightness() hass.Number {
+func (m *Monitor) CreateNumberBrightness() *hass.Number {
 	objectId := fmt.Sprintf("%s_brightness", m.device.Identifiers)
 	baseTopic := fmt.Sprintf("%s/%s", m.cfg.MqttRootTopic, objectId)
 	brightness := hass.Number{
-		Discovered:     false,
-		BaseTopic:      baseTopic,
-		Name:           "Brightness",
-		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
-		DiscoveryTopic: fmt.Sprintf("%s/number/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
-		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)},
-		CommandTopic:   fmt.Sprintf("%s/set", baseTopic),
-		ObjectId:       objectId,
-		UniqueId:       objectId,
-		Device:         m.device,
-		Icon:           "mdi:brightness-percent",
-		Min:            0,
-		Max:            100,
-		Mode:           "slider",
-		Step:           1,
-		Unit:           "%",
+		Discovered:       false,
+		BaseTopic:        baseTopic,
+		Name:             "Brightness",
+		StateTopic:       fmt.Sprintf("%s/state", baseTopic),
+		DiscoveryTopic:   fmt.Sprintf("%s/number/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
+		Availability:     []hass.SAvailability{{Topic: m.availabilityTopic}, {Topic: m.mqtt.GetGlobalAvailabilityTopic()}},
+		AvailabilityMode: "all",
+		CommandTopic:     fmt.Sprintf("%s/set", baseTopic),
+		ObjectId:         objectId,
+		UniqueId:         objectId,
+		Device:           m.device,
+		Icon:             "mdi:brightness-percent",
+		Min:              0,
+		Max:              100,
+		Mode:             "slider",
+		Step:             1,
+		Unit:             "%",
 	}
 
 	brightness.SetMqtt(m.mqtt)
 	brightness.SetValueReader(m.ddmrpc.GetBrightnessLevel)
 	brightness.SetValueSetter(m.ddmrpc.SetBrightnessLevel)
 
-	return brightness
+	return &brightness
 }
 
-func (m *Monitor) CreateNumberContrast() hass.Number {
+func (m *Monitor) CreateNumberContrast() *hass.Number {
 	objectId := fmt.Sprintf("%s_contrast", m.device.Identifiers)
 	baseTopic := fmt.Sprintf("%s/%s", m.cfg.MqttRootTopic, objectId)
 	contrast := hass.Number{
-		Discovered:     false,
-		BaseTopic:      baseTopic,
-		Name:           "Contrast",
-		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
-		DiscoveryTopic: fmt.Sprintf("%s/number/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
-		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)},
-		CommandTopic:   fmt.Sprintf("%s/set", baseTopic),
-		ObjectId:       objectId,
-		UniqueId:       objectId,
-		Device:         m.device,
-		Icon:           "mdi:contrast-box",
-		Min:            0,
-		Max:            100,
-		Mode:           "slider",
-		Step:           1,
-		Unit:           "%",
+		Discovered:       false,
+		BaseTopic:        baseTopic,
+		Name:             "Contrast",
+		StateTopic:       fmt.Sprintf("%s/state", baseTopic),
+		DiscoveryTopic:   fmt.Sprintf("%s/number/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
+		Availability:     []hass.SAvailability{{Topic: m.availabilityTopic}, {Topic: m.mqtt.GetGlobalAvailabilityTopic()}},
+		AvailabilityMode: "all",
+		CommandTopic:     fmt.Sprintf("%s/set", baseTopic),
+		ObjectId:         objectId,
+		UniqueId:         objectId,
+		Device:           m.device,
+		Icon:             "mdi:contrast-box",
+		Min:              0,
+		Max:              100,
+		Mode:             "slider",
+		Step:             1,
+		Unit:             "%",
 	}
 
 	contrast.SetMqtt(m.mqtt)
 	contrast.SetValueReader(m.ddmrpc.GetContrastLevel)
 	contrast.SetValueSetter(m.ddmrpc.SetContrastLevel)
 
-	return contrast
+	return &contrast
 }
 
-func (m *Monitor) CreateSelectPresets() hass.Select {
+func (m *Monitor) CreateSelectPresets() *hass.Select {
 	objectId := fmt.Sprintf("%s_presets", m.device.Identifiers)
 	baseTopic := fmt.Sprintf("%s/%s", m.cfg.MqttRootTopic, objectId)
 	selector := hass.Select{
-		Discovered:     false,
-		BaseTopic:      baseTopic,
-		Name:           "Preset",
-		State:          "",
-		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
-		DiscoveryTopic: fmt.Sprintf("%s/select/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
-		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)},
-		CommandTopic:   fmt.Sprintf("%s/set", baseTopic),
-		ObjectId:       objectId,
-		UniqueId:       objectId,
-		Device:         m.device,
-		Icon:           "mdi:format-list-bulleted",
-		Options:        append(make([]string, 0), ""),
-		Affected:       make([]hass.Number, 0),
+		Discovered:       false,
+		BaseTopic:        baseTopic,
+		Name:             "Preset",
+		State:            "",
+		StateTopic:       fmt.Sprintf("%s/state", baseTopic),
+		DiscoveryTopic:   fmt.Sprintf("%s/select/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
+		Availability:     []hass.SAvailability{{Topic: m.availabilityTopic}, {Topic: m.mqtt.GetGlobalAvailabilityTopic()}},
+		AvailabilityMode: "all",
+		CommandTopic:     fmt.Sprintf("%s/set", baseTopic),
+		ObjectId:         objectId,
+		UniqueId:         objectId,
+		Device:           m.device,
+		Icon:             "mdi:format-list-bulleted",
+		Options:          append(make([]string, 0), ""),
+		Affected:         make([]*hass.Number, 0),
 	}
 	for _, option := range m.cfg.Presets {
 		selector.Options = append(selector.Options, option.Name)
@@ -180,27 +187,28 @@ func (m *Monitor) CreateSelectPresets() hass.Select {
 		return nil
 	})
 
-	return selector
+	return &selector
 }
 
-func (m *Monitor) CreateSelectInput() hass.Select {
+func (m *Monitor) CreateSelectInput() *hass.Select {
 	objectId := fmt.Sprintf("%s_input", m.device.Identifiers)
 	baseTopic := fmt.Sprintf("%s/%s", m.cfg.MqttRootTopic, objectId)
 	selector := hass.Select{
-		Discovered:     false,
-		BaseTopic:      baseTopic,
-		Name:           "Input",
-		State:          "",
-		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
-		DiscoveryTopic: fmt.Sprintf("%s/select/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
-		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)},
-		CommandTopic:   fmt.Sprintf("%s/set", baseTopic),
-		ObjectId:       objectId,
-		UniqueId:       objectId,
-		Device:         m.device,
-		Icon:           "mdi:import",
-		Options:        append(make([]string, 0), ""),
-		Affected:       make([]hass.Number, 0),
+		Discovered:       false,
+		BaseTopic:        baseTopic,
+		Name:             "Input",
+		State:            "",
+		StateTopic:       fmt.Sprintf("%s/state", baseTopic),
+		DiscoveryTopic:   fmt.Sprintf("%s/select/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
+		Availability:     []hass.SAvailability{{Topic: m.availabilityTopic}, {Topic: m.mqtt.GetGlobalAvailabilityTopic()}},
+		AvailabilityMode: "all",
+		CommandTopic:     fmt.Sprintf("%s/set", baseTopic),
+		ObjectId:         objectId,
+		UniqueId:         objectId,
+		Device:           m.device,
+		Icon:             "mdi:import",
+		Options:          append(make([]string, 0), ""),
+		Affected:         make([]*hass.Number, 0),
 	}
 	for _, option := range m.capabilities.AvailableInputs {
 		if _, ok := ddmrpc.KnownInputs[option]; !ok {
@@ -244,98 +252,89 @@ func (m *Monitor) CreateSelectInput() hass.Select {
 		return nil
 	})
 
-	return selector
+	return &selector
 }
 
-func (m *Monitor) CreateSwitchPower() hass.Switch {
+func (m *Monitor) CreateSwitchPower() *hass.Switch {
 	objectId := fmt.Sprintf("%s_power", m.device.Identifiers)
 	baseTopic := fmt.Sprintf("%s/%s", m.cfg.MqttRootTopic, objectId)
 	power := hass.Switch{
-		Discovered:     false,
-		BaseTopic:      baseTopic,
-		Name:           "Power",
-		StateTopic:     fmt.Sprintf("%s/state", baseTopic),
-		DiscoveryTopic: fmt.Sprintf("%s/switch/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
-		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)},
-		CommandTopic:   fmt.Sprintf("%s/set", baseTopic),
-		ObjectId:       objectId,
-		UniqueId:       objectId,
-		Device:         m.device,
-		Icon:           "mdi:power",
+		Discovered:       false,
+		BaseTopic:        baseTopic,
+		Name:             "Power",
+		StateTopic:       fmt.Sprintf("%s/state", baseTopic),
+		DiscoveryTopic:   fmt.Sprintf("%s/switch/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
+		Availability:     []hass.SAvailability{{Topic: m.availabilityTopic}, {Topic: m.mqtt.GetGlobalAvailabilityTopic()}},
+		AvailabilityMode: "all",
+		CommandTopic:     fmt.Sprintf("%s/set", baseTopic),
+		ObjectId:         objectId,
+		UniqueId:         objectId,
+		Device:           m.device,
+		Icon:             "mdi:power",
 	}
 
 	power.SetMqtt(m.mqtt)
-	power.SetValueReader(m.ddmrpc.GetPower)
+	power.SetValueReader(func(identifier string) (string, error) {
+		pw, err := m.ddmrpc.GetPower(identifier)
+		if err != nil {
+			return "", fmt.Errorf("get power for %s: %w", identifier, err)
+		}
+		if pw == "POWER_OFF" {
+			return "", fmt.Errorf("device %s is physically off", identifier)
+		}
+		return pw, nil
+	})
 	power.SetValueSetter(m.ddmrpc.SetPower)
 
-	return power
+	return &power
 }
 
-func (m *Monitor) CreateButtonReset() hass.Button {
+func (m *Monitor) CreateButtonReset() *hass.Button {
 	objectId := fmt.Sprintf("%s_reset", m.device.Identifiers)
 	baseTopic := fmt.Sprintf("%s/%s", m.cfg.MqttRootTopic, objectId)
 	reset := hass.Button{
-		Discovered:     false,
-		BaseTopic:      baseTopic,
-		Name:           "Reset",
-		DiscoveryTopic: fmt.Sprintf("%s/button/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
-		Availability:   hass.SAvailability{Topic: fmt.Sprintf("%s/available", m.cfg.MqttRootTopic)},
-		CommandTopic:   fmt.Sprintf("%s/press", baseTopic),
-		ObjectId:       objectId,
-		UniqueId:       objectId,
-		Device:         m.device,
-		Icon:           "mdi:restart",
+		Discovered:       false,
+		BaseTopic:        baseTopic,
+		Name:             "Reset",
+		DiscoveryTopic:   fmt.Sprintf("%s/button/%s/config", m.cfg.HassDiscoveryPrefix, objectId),
+		Availability:     []hass.SAvailability{{Topic: m.availabilityTopic}, {Topic: m.mqtt.GetGlobalAvailabilityTopic()}},
+		AvailabilityMode: "all",
+		CommandTopic:     fmt.Sprintf("%s/press", baseTopic),
+		ObjectId:         objectId,
+		UniqueId:         objectId,
+		Device:           m.device,
+		Icon:             "mdi:restart",
 	}
 
 	reset.SetMqtt(m.mqtt)
 	reset.SetValueSetter(m.ddmrpc.Reset)
 
-	return reset
+	return &reset
 }
 
-func (m *Monitor) StartReporting(ctx context.Context) {
+type Reporter interface {
+	Init() error
+	ReportValue() error
+}
+func (m *Monitor) StartReporting(ctx context.Context) error {
 	var err error
-
-	ah := m.CreateSensorActiveHours()
-	ah.Init()
-
-	br := m.CreateNumberBrightness()
-	err = br.Init()
-	if err != nil {
-		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
-	}
-
-	cn := m.CreateNumberContrast()
-	err = cn.Init()
-	if err != nil {
-		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
-	}
-
-	se := m.CreateSelectPresets()
-	err = se.Init()
-	if err != nil {
-		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
-	}
-	se.Affected = append(se.Affected, br, cn)
-
-	si := m.CreateSelectInput()
-	err = si.Init()
-	if err != nil {
-		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
-	}
+	var reporters []Reporter
 
 	pw := m.CreateSwitchPower()
-	err = pw.Init()
-	if err != nil {
-		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
+	br := m.CreateNumberBrightness()
+	cn := m.CreateNumberContrast()
+	pr := m.CreateSelectPresets()
+	pr.Affected = append(pr.Affected, br, cn)
+	reporters = append(reporters, m.CreateSensorActiveHours(), br, cn, pr, m.CreateSelectInput(), m.CreateButtonReset())
+	for k, _ := range reporters {
+		err = reporters[k].Init()
+		if err != nil {
+			log.Printf("init reporter err: %v", err)
+			//return fmt.Errorf("start monitor %s: %w", m.device.Identifiers, err)
+		}
 	}
 
-	re := m.CreateButtonReset()
-	err = re.Init()
-	if err != nil {
-		log.Fatalf("[%s] failed to init: %s", br.ObjectId, err.Error())
-	}
-
+	m.reportAvailability(true)
 	t := time.NewTicker(15 * time.Second)
 	defer t.Stop()
 
@@ -344,44 +343,48 @@ func (m *Monitor) StartReporting(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			m.reportAvailability(false)
+			return nil
 		case <-t.C:
 		case <-firstRun:
 			firstRun = nil
 		}
 
-		var err error
-		err = ah.ReportValue()
-		if err != nil {
-			log.Printf("[%s] failed to report state", ah.ObjectId)
+		available := true
+		for k, _ := range reporters {
+			err = pw.ReportValue()
+			if err != nil {
+				available = false
+				break
+			}
+			err = reporters[k].ReportValue()
+			if err != nil {
+				available = false
+				break
+			}
 		}
-		err = br.ReportValue()
-		if err != nil {
-			log.Printf("[%s] failed to report state", br.ObjectId)
-		}
-		err = cn.ReportValue()
-		if err != nil {
-			log.Printf("[%s] failed to report state", cn.ObjectId)
-		}
+		if available {
+			m.reportAvailability(true)
 
-		err = se.ReportValue()
-		if err != nil {
-			log.Printf("[%s] failed to report state", cn.ObjectId)
-		}
-
-		err = si.ReportValue()
-		if err != nil {
-			log.Printf("[%s] failed to report state", cn.ObjectId)
-		}
-
-		err = pw.ReportValue()
-		if err != nil {
-			log.Printf("[%s] failed to report state", cn.ObjectId)
-		}
-
-		err = re.ReportValue()
-		if err != nil {
-			log.Printf("[%s] failed to report state", cn.ObjectId)
+		} else {
+			m.reportAvailability(false)
 		}
 	}
+}
+
+func (m *Monitor) reportAvailability(available bool) {
+	if m.available == available {
+		return
+	}
+	availabilityStatus := "offline"
+	if available {
+		availabilityStatus = "online"
+	}
+	log.Printf("[%s] publishing availability: %s", m.device.Identifiers, availabilityStatus)
+
+	err := m.mqtt.Publish(m.availabilityTopic, false, availabilityStatus)
+	if err != nil {
+		log.Printf("[%s] failed to publish online state: %s", m.device.Identifiers, err.Error())
+	}
+	m.available = available
 }

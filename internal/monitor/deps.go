@@ -5,6 +5,7 @@ import "ddmqtt/internal/ddmrpc"
 type DDMRPCClient interface {
 	CountMonitors() (int, error)
 	GetAssetAttributes(int) (ddmrpc.AssetAttributes, error)
+	GetAssetAttributesByTag(serviceTag string) (ddmrpc.AssetAttributes, error)
 	GetCapabilities(serviceTag string) (ddmrpc.Capabilities, error)
 	GetFirmwareVersion(serviceTag string) (string, error)
 	GetMonitorActiveHours(serviceTag string) (int, error)

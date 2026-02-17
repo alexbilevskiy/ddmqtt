@@ -7,20 +7,21 @@ import (
 )
 
 type Sensor struct {
-	Discovered     bool   `json:"-"`
-	Avaialable     bool   `json:"-"`
-	State          int    `json:"-"`
-	BaseTopic      string `json:"-"`
-	DiscoveryTopic string `json:"-"`
-	valueReader    SensorReader
-	mqtt           mqttClient
-	Name           string        `json:"name"`
-	Availability   SAvailability `json:"availability"`
-	StateTopic     string        `json:"state_topic"`
-	ObjectId       string        `json:"object_id"`
-	UniqueId       string        `json:"unique_id"`
-	Device         *Device       `json:"device"`
-	Icon           string        `json:"icon"`
+	Discovered       bool   `json:"-"`
+	Avaialable       bool   `json:"-"`
+	State            int    `json:"-"`
+	BaseTopic        string `json:"-"`
+	DiscoveryTopic   string `json:"-"`
+	valueReader      SensorReader
+	mqtt             mqttClient
+	Name             string          `json:"name"`
+	Availability     []SAvailability `json:"availability"`
+	AvailabilityMode string          `json:"availability_mode"`
+	StateTopic       string          `json:"state_topic"`
+	ObjectId         string          `json:"object_id"`
+	UniqueId         string          `json:"unique_id"`
+	Device           *Device         `json:"device"`
+	Icon             string          `json:"icon"`
 }
 
 func (entity *Sensor) SetMqtt(mqtt mqttClient) {
@@ -55,31 +56,12 @@ func (entity *Sensor) ReportValue() error {
 	value, err := entity.valueReader(entity.Device.Identifiers)
 	if err != nil {
 		log.Printf("[%s] cannot read value: %s", entity.ObjectId, err.Error())
-		entity.reportAvailability(false)
 
 		return err
 	}
-	entity.reportAvailability(true)
 	entity.publishState(value)
 
 	return nil
-}
-
-func (entity *Sensor) reportAvailability(available bool) {
-	if entity.Avaialable == available {
-		return
-	}
-	availabilityStatus := "offline"
-	if available {
-		availabilityStatus = "online"
-	}
-	log.Printf("[%s] publishing availability: %s", entity.ObjectId, availabilityStatus)
-
-	err := entity.mqtt.Publish(entity.Availability.Topic, false, availabilityStatus)
-	if err != nil {
-		log.Printf("[%s] failed to publish online state: %s", entity.ObjectId, err.Error())
-	}
-	entity.Avaialable = available
 }
 
 func (entity *Sensor) publishState(state int) {
