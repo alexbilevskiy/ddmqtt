@@ -10,7 +10,7 @@ type Config struct {
 }
 
 type Preset struct {
-	Name       string
-	Brightness int
-	Contrast   int
+ 	Name       string `json:"name"`
+	Brightness int    `json:"brightness"`
+	Contrast   int    `json:"contrast"`
 }

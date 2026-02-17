@@ -4,7 +4,7 @@ package ddmrpc
 //
 // examples:
 //
-// # DEL41D9,Dell S2721DGF,FDSJ093,2021 ISO week 37,1110
+// DEL41D9,Dell S2721DGF,FDSJ093,2021 ISO week 37,1110
 //
 // DELA0A4,Dell U2414H,4VKH66553PDS,2016 ISO week 19,11814
 type AssetAttributes struct {
