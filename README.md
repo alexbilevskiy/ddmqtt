@@ -6,12 +6,11 @@
 - active hours sensor (just for fun)
 - power on/off
 - reset
-- input selection
+- input selection (after switching the input DDM connection may be lost - it is technical limitation of HDMI (displayPort probably works fine))
 
 ### Multiple monitors (beta)
-Multiple monitors are supported, but not without issues
-- No hot reload (need to restart service after connecting/disconnecting monitor)
-- No cleanup of old devices (mqtt topics probably would be deleted by broker, but disconnected monitor will be visible in HA)
+Multiple monitors support is experimental
+- Hot reload is supported (monitors connection/disconnection doesnt require restarting the app), but rescan takes some time (~1 min) and during rescan even connected monitors may temporarily be reported as unavailable in mqtt 
 
 ### TODO
 - presets (as in DDM ui)
