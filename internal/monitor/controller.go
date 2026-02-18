@@ -39,12 +39,12 @@ func (c *MonitorsController) StartReporting(ctx context.Context) error {
 			monitorsCount, err := c.ddmrpc.CountMonitors()
 			if err != nil {
 				log.Printf("failed to count monitors: %s", err)
-				time.Sleep(1 * time.Second)
+				time.Sleep(5 * time.Second)
 				continue
 			}
 			if monitorsCount == 0 {
 				log.Printf("no monitors found")
-				time.Sleep(1 * time.Second)
+				time.Sleep(5 * time.Second)
 				continue
 			}
 			//log.Printf("%d monitors found", monitorsCount)
@@ -65,10 +65,12 @@ func (c *MonitorsController) StartReporting(ctx context.Context) error {
 			// something changed
 			systemMonitors := make(map[string]struct{})
 			for i := 0; i < monitorsCount; i++ {
+				id := i+1
 				//log.Printf("describe monitor %d", i)
-				attrs, errAttrs := c.ddmrpc.GetAssetAttributes(i + 1)
+				attrs, errAttrs := c.ddmrpc.GetAssetAttributes(id)
 				if errAttrs != nil {
-					//log.Printf("get asset attributes for monitor %d: %s", i, errAttrs)
+					log.Printf("get asset attributes for monitor %d: %s", id, errAttrs)
+					continue
 				}
 				systemMonitors[attrs.ServiceTag] = struct{}{}
 				if _, ok := c.monitors[attrs.ServiceTag]; ok {
@@ -76,8 +78,13 @@ func (c *MonitorsController) StartReporting(ctx context.Context) error {
 					continue
 				}
 				log.Printf("found new monitor: %v", attrs)
+				mon, monErr := newMonitor(c.cfg, c.ddmrpc, c.mqtt, &attrs)
+				if monErr != nil {
+					log.Printf("failed to create monitor for %s: %s", attrs.ServiceTag, monErr)
+					continue
+				}
 				monCtx, cancel := context.WithCancel(ctx)
-				c.monitors[attrs.ServiceTag] = &monitor{monitor: newMonitor(c.cfg, c.ddmrpc, c.mqtt, &attrs), cancel: cancel}
+				c.monitors[attrs.ServiceTag] = &monitor{monitor: mon, cancel: cancel}
 				go c.monitors[attrs.ServiceTag].monitor.StartReporting(monCtx)
 			}
 			for tag, _ := range c.monitors {

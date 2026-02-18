@@ -52,14 +52,14 @@ func NewDdmRpc(registry registryClient) *DdmRpc {
 }
 
 func (d *DdmRpc) CountMonitors() (int, error) {
-	res, err := d.executeCommand("CountMonitors", ReturnTypeInt)
+	res, err := d.executeCommand("CountMonitorsCI", ReturnTypeInt)
 	if err != nil {
 
 		return -1, err
 	}
 	countMonitors, err := strconv.ParseInt(res, 10, 32)
 	if err != nil {
-		return -1, fmt.Errorf("CountMonitors: %w", err)
+		return -1, fmt.Errorf("CountMonitorsCI: %w", err)
 	}
 
 	return int(countMonitors), nil
@@ -302,8 +302,12 @@ func (d *DdmRpc) Reset(serviceTag string) error {
 
 func (d *DdmRpc) executeCommand(command string, returnType string, params ...string) (string, error) {
 	d.mu.Lock()
-	defer d.mu.Unlock()
+	defer func() {
+		time.Sleep(200 * time.Millisecond)
+		d.mu.Unlock()
+	}()
 
+	//time.Sleep(200 * time.Millisecond)
 	err := d.registry.WriteCommand(command, params...)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrExecuteError, err)

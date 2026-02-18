@@ -22,16 +22,16 @@ type Monitor struct {
 	availabilityTopic string
 }
 
-func newMonitor(cfg *config.Config, ddmrpc DDMRPCClient, mqtt *mqtt.Client, attrs *ddmrpc.AssetAttributes) *Monitor {
+func newMonitor(cfg *config.Config, ddmrpc DDMRPCClient, mqtt *mqtt.Client, attrs *ddmrpc.AssetAttributes) (*Monitor, error) {
 	var device hass.Device
 
 	fw, err := ddmrpc.GetFirmwareVersion(attrs.ServiceTag)
 	if err != nil {
-		log.Fatalf("failed to read monitor fw: %s", err.Error())
+		return nil, fmt.Errorf("failed to read monitor fw: %w", err)
 	}
 	caps, err := ddmrpc.GetCapabilities(attrs.ServiceTag)
 	if err != nil {
-		log.Fatalf("failed to read monitor caps: %s", err.Error())
+		return nil, fmt.Errorf("failed to read monitor caps: %w", err)
 	}
 	device = hass.Device{
 		Identifiers:  attrs.ServiceTag,
@@ -48,7 +48,7 @@ func newMonitor(cfg *config.Config, ddmrpc DDMRPCClient, mqtt *mqtt.Client, attr
 		device:            &device,
 		capabilities:      caps,
 		availabilityTopic: fmt.Sprintf("%s/%s_available", cfg.MqttRootTopic, device.Identifiers),
-	}
+	}, nil
 }
 
 func (m *Monitor) CreateSensorActiveHours() *hass.Sensor {
@@ -316,7 +316,7 @@ type Reporter interface {
 	Init() error
 	ReportValue() error
 }
-func (m *Monitor) StartReporting(ctx context.Context) error {
+func (m *Monitor) StartReporting(ctx context.Context) {
 	var err error
 	var reporters []Reporter
 
@@ -344,7 +344,7 @@ func (m *Monitor) StartReporting(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			m.reportAvailability(false)
-			return nil
+			return
 		case <-t.C:
 		case <-firstRun:
 			firstRun = nil
